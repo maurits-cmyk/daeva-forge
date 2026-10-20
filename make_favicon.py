@@ -15,7 +15,7 @@ def bezier(p0, p1, p2, p3, n=24):
             for t in (i / n for i in range(1, n + 1))]
 
 
-def draw(background=None):
+def draw(background=None, ring_alpha=217):
     img = Image.new('RGBA', (SS, SS), background or (0, 0, 0, 0))
     # disc with the radial gradient (#2b3340 → #0d1015), centre (20, 18.1), radius 20.6
     disc = Image.new('RGBA', (SS, SS))
@@ -31,7 +31,7 @@ def draw(background=None):
     img.alpha_composite(Image.composite(disc, Image.new('RGBA', (SS, SS)), mask))
     # cyan ring: r 18.75, width 2.5, 85% opacity
     ring = Image.new('RGBA', (SS, SS))
-    ImageDraw.Draw(ring).ellipse([0, 0, SS - 1, SS - 1], outline=(0x5f, 0xd6, 0xe8, 217), width=round(2.5 * K))
+    ImageDraw.Draw(ring).ellipse([0, 0, SS - 1, SS - 1], outline=(0x5f, 0xd6, 0xe8, ring_alpha), width=round(2.5 * K))
     img.alpha_composite(ring)
     d = ImageDraw.Draw(img)
     # anvil: the emblem path, scaled 1.13 and nudged (translate(-2.6 -1.4))
