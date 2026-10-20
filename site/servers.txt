@@ -1,0 +1,4 @@
+# aion2.exchange server ids the hosted site fetches every hour (see /api/servers).
+# Only a few until Aion2Market OKs fetching all 106.
+12101  # Israphel, NA East, Asmodian
+11101  # Siel, NA East, Elyos

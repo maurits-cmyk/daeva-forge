@@ -1,0 +1,242 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Combat Power Tracker</title>
+<link rel="icon" href="/favicon.ico" sizes="32x32"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}[hidden]{display:none!important}
+/* Layout: a ledger. Settings strip on top, one sortable table of every recipe, a recipe sheet unfolds under the chosen row. */
+:root{
+  --bg:#eef1f5; --panel:#fbfcfd; --ink:#18202b; --muted:#5a6676; --line:#d6dce5; --soft:#e5e9ef;
+  --accent:#8a5d0b; --accent-soft:#f3e7cf; --gain:#1d7448; --loss:#b0383a; --warn:#9a6a00;
+  --g-common:#6b7280; --g-rare:#2f8a3e; --g-epic:#2f6fc4; --g-unique:#b7791f; --g-heroic:#c2501a; --g-legend:#7a4bc2;
+  --f-display:"Marcellus","Cinzel",Georgia,serif; --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif; --f-num:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#11151b; --panel:#181e26; --ink:#e4e8ee; --muted:#93a0b1; --line:#29313c; --soft:#202833;
+  --accent:#d6a944; --accent-soft:#2c2618; --gain:#53c48d; --loss:#ee6f6f; --warn:#e0b54a;
+  --g-common:#a3acb9; --g-rare:#5fc96f; --g-epic:#6ea5f0; --g-unique:#e3a94a; --g-heroic:#f08453; --g-legend:#b48cf0; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11151b; --panel:#181e26; --ink:#e4e8ee; --muted:#93a0b1; --line:#29313c; --soft:#202833;
+  --accent:#d6a944; --accent-soft:#2c2618; --gain:#53c48d; --loss:#ee6f6f; --warn:#e0b54a;
+  --g-common:#a3acb9; --g-rare:#5fc96f; --g-epic:#6ea5f0; --g-unique:#e3a94a; --g-heroic:#f08453; --g-legend:#b48cf0; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--f-body);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+h1{font:400 30px/1.1 var(--f-display);letter-spacing:.02em;margin:0;text-wrap:balance}
+h1 small{display:block;font:500 12px/1.4 var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+.status{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12.5px;color:var(--muted)}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel);white-space:nowrap}
+.pill.live{border-color:var(--gain);color:var(--gain)}
+.pill.snap{border-color:var(--accent);color:var(--accent)}
+.dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+.settings{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px 20px}
+fieldset{border:0;margin:0;padding:0;min-width:0;display:flex;flex-direction:column;gap:8px}
+legend{font:600 11px/1 var(--f-body);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);padding:0;margin-bottom:8px}
+.mastery{display:grid;grid-template-columns:1fr 64px;gap:6px 10px;align-items:center}
+label{font-size:13px}
+input[type=number],input[type=search],select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 8px;min-width:0;width:100%}
+input[type=number]{font-family:var(--f-num);text-align:right}
+input:focus-visible,select:focus-visible,button:focus-visible,tr:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.row label{display:inline-flex;align-items:center;gap:6px}
+.hint{font-size:12px;color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{font:inherit;font-size:12.5px;border:0;background:transparent;color:var(--muted);padding:5px 10px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.toolbar .row{flex:1 1 auto}
+.toolbar input[type=search]{max-width:280px}
+.summary{font-size:13px;color:var(--muted)}
+.summary b{color:var(--ink);font-weight:600}
+.tablebox{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:860px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--soft);vertical-align:middle}
+th{font:600 11px/1.2 var(--f-body);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);background:var(--panel);position:sticky;top:0;cursor:pointer;user-select:none;white-space:nowrap}
+th.num,td.num{text-align:right}
+th[aria-sort="descending"]::after{content:" ▾";color:var(--accent)}
+th[aria-sort="ascending"]::after{content:" ▴";color:var(--accent)}
+td.num{font-family:var(--f-num);font-variant-numeric:tabular-nums;white-space:nowrap}
+tbody tr.rec{cursor:pointer}
+tbody tr.rec:hover{background:var(--soft)}
+tbody tr.rec.open{background:var(--accent-soft)}
+tbody tr.locked td{opacity:.62}
+.name{font-weight:500}
+.g-Common{color:var(--g-common)} .g-Rare{color:var(--g-rare)} .g-Epic,.g-Legend{color:var(--g-epic)} .g-Unique{color:var(--g-unique)} .g-Heroic{color:var(--g-heroic)} .g-Mythic,.g-Ancient{color:var(--g-legend)}
+.sub{display:block;font-size:12px;color:var(--muted);font-weight:400}
+.gain{color:var(--gain)} .loss{color:var(--loss)} .muted{color:var(--muted)}
+.chip{display:inline-block;font:500 11px/1.5 var(--f-body);padding:0 7px;border-radius:999px;border:1px solid var(--line);color:var(--muted);margin-left:6px;white-space:nowrap}
+.chip.warn{border-color:var(--warn);color:var(--warn)}
+.chip.lock{border-color:var(--loss);color:var(--loss)}
+.colmenu{position:relative}
+.pop{position:absolute;right:0;top:calc(100% + 6px);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;box-shadow:0 6px 18px rgba(0,0,0,.14);z-index:5;display:flex;flex-direction:column;gap:7px;min-width:210px}
+.pop label{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.pop .hint{white-space:normal}
+.chip.good{border-color:var(--gain);color:var(--gain)}
+.chip.risk{border-color:var(--warn);color:var(--warn)}
+details>summary{list-style-position:inside}
+.bar{display:inline-block;height:6px;border-radius:3px;background:var(--gain);vertical-align:middle;margin-left:6px;opacity:.75}
+.bar.neg{background:var(--loss)}
+tr.sheet>td{background:var(--bg);padding:0;border-bottom:2px solid var(--accent)}
+.sheetin{padding:14px 16px;display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:18px}
+.sheetin h3{font:400 18px/1.2 var(--f-display);margin:0 0 8px}
+.sheetin table{min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:8px}
+.sheetin th{position:static;cursor:default}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.kv dt{color:var(--muted);font-size:13px} .kv dd{margin:0;text-align:right;font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.kv dd.total{font-weight:600;border-top:1px solid var(--line);padding-top:4px}
+.kv dt.total{border-top:1px solid var(--line);padding-top:4px;color:var(--ink);font-weight:600}
+.src{display:inline-flex;gap:0;border:1px solid var(--line);border-radius:5px;overflow:hidden}
+.src button{font:inherit;font-size:11.5px;border:0;padding:2px 7px;background:transparent;color:var(--muted);cursor:pointer}
+.src button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.src button:disabled{opacity:.35;cursor:not-allowed}
+.manual{width:110px;font-size:12px;padding:2px 6px}
+.notes{font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:6px;max-width:75ch}
+.notes p{margin:0}
+.char{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:18px 24px}
+.who{display:flex;flex-direction:column;gap:10px;min-width:0}
+.who .id{display:flex;gap:12px;align-items:center}
+.who img{width:56px;height:56px;border-radius:8px;object-fit:cover;background:var(--soft);border:1px solid var(--line)}
+.who h2{font:400 22px/1.1 var(--f-display);margin:0}
+.cp{font:500 34px/1 var(--f-num);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.cp-label{font:600 11px/1 var(--f-body);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.deltas{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px}
+.deltas span b{font-family:var(--f-num);font-weight:500}
+.btn{font:inherit;font-size:12.5px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:6px;padding:5px 10px;cursor:pointer}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn[disabled]{opacity:.5;cursor:wait}
+.charform{display:flex;gap:6px;flex-wrap:wrap}
+.charform input{max-width:150px}
+.charform select{max-width:90px}
+.chart{position:relative;min-width:0}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart .grid{stroke:var(--soft);stroke-width:1}
+.chart .axis{fill:var(--muted);font:11px var(--f-num)}
+.chart .line{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round}
+.chart .area{fill:var(--accent);opacity:.08}
+.chart .pt{fill:var(--accent);stroke:var(--panel);stroke-width:2}
+.chart .hit{fill:transparent;cursor:pointer}
+.chart .cross{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3}
+.tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12.5px;box-shadow:0 4px 14px rgba(0,0,0,.12);max-width:280px;z-index:2}
+.tip b{font-family:var(--f-num);font-weight:500}
+.tip ul{margin:4px 0 0;padding-left:16px;color:var(--muted)}
+.log{grid-column:1/-1;min-width:0}
+.log h3{font:400 17px/1.2 var(--f-display);margin:0 0 8px}
+.log table{min-width:560px}
+.log td.what{color:var(--muted);font-size:13px}
+.chartempty{border:1px dashed var(--line);border-radius:8px;padding:20px;color:var(--muted);font-size:13px;display:flex;align-items:center;justify-content:center;min-height:140px;text-align:center}
+@media (max-width:760px){.char{grid-template-columns:1fr}}
+.wrap{max-width:1100px}
+</style></head><body>
+<div class="wrap">
+  <header><h1>Combat Power Tracker<small>Readings every 30 minutes while Daeva Forge runs on this PC</small></h1>
+    <div class="status"><a class="pill" href="/">Crafting ledger</a></div></header>
+  <section class="char" id="char" aria-label="Combat Power tracker"><p class="hint">Loading…</p></section>
+  <p class="hint">NC's character data shows gear, enchants, skills and Stigmas, Daevanion nodes, titles owned, stats, the summoned pet and wings. Pet collection bonuses raise base stats, so maxing pets shows up as stat changes (e.g. "STR 19 → 21"). Genus Insight lines are not in the data, so CP from Genus rolls appears as a jump with no listed cause.</p>
+</div>
+<script>
+const LIVE = ['localhost','127.0.0.1'].includes(location.hostname);
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function ago(iso){ if(!iso) return ''; const m = (Date.now() - new Date(iso))/6e4; return m < 90 ? Math.round(m)+' min ago' : m < 2880 ? Math.round(m/60)+' h ago' : Math.round(m/1440)+' days ago' }
+/* ---------- Combat Power tracker (local version only) ---------- */
+const fmtInt = v => v == null ? '–' : Math.round(v).toLocaleString('en-US');
+const signed = v => (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(Math.round(v)).toLocaleString('en-US');
+const when = iso => new Date(iso).toLocaleString(undefined, {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+async function charCall(path){
+  const res = await fetch(path, {cache:'no-store'});
+  const j = await res.json().catch(() => ({}));
+  if(!res.ok) throw new Error(j.error || 'The tracker did not answer (' + res.status + ').');
+  return j;
+}
+function renderChar(j, msg){
+  const box = $('#char'); box.hidden = false;
+  const R = (j.history && j.history.readings) || [];
+  if(!j.character || !R.length){
+    box.innerHTML = `<div class="who"><h2>Combat Power</h2><p class="hint">${msg ? esc(msg) : 'Pick your character to start tracking.'}</p>${charForm()}</div>`;
+    bindCharForm(j);
+    return;
+  }
+  const last = R[R.length - 1], first = R[0], prev = R.length > 1 ? R[R.length - 2] : null;
+  const d = (a, b) => `<b class="${a - b > 0 ? 'gain' : a - b < 0 ? 'loss' : ''}">${signed(a - b)}</b>`;
+  box.innerHTML = `
+    <div class="who">
+      <div class="id">${last.portrait ? `<img src="${esc(last.portrait)}" alt="">` : ''}<div><h2>${esc(last.name)}</h2><span class="hint">${esc(last.className)} · Lv ${last.level} · ${esc(last.server)}${last.title ? ' · ' + esc(last.title) : ''}</span></div></div>
+      <div><div class="cp-label">Combat Power</div><div class="cp">${fmtInt(last.cp)}</div></div>
+      <div class="deltas">${prev ? `<span>Last change ${d(last.cp, prev.cp)}</span>` : ''}${R.length > 1 ? `<span>Since ${when(first.t)} ${d(last.cp, first.cp)}</span>` : ''}<span>Item level <b>${fmtInt(last.itemLevel)}</b></span></div>
+      <div class="row"><button type="button" class="btn" id="cpRefresh">Check now</button><span class="hint" id="cpChecked">Checked ${ago(j.history.checked)} · every ${Math.round(j.every / 60)} min while the app runs</span></div>
+      ${msg ? `<p class="hint loss">${esc(msg)}</p>` : ''}
+      <details><summary class="hint" style="cursor:pointer">Track another character</summary>${charForm()}</details>
+    </div>
+    <div class="chart" id="cpChart">${R.length > 1 ? '' : `<div class="chartempty">One reading so far (${fmtInt(last.cp)} CP on ${when(last.t)}). The chart fills in each time your Combat Power, gear, skills or Daevanion change.</div>`}</div>
+    <div class="log"><h3>What changed</h3><div class="tablebox"><table><thead><tr><th>When</th><th class="num">Combat Power</th><th class="num">Change</th><th>What changed</th></tr></thead><tbody>
+      ${R.slice().reverse().map((r, i, arr) => { const p = arr[i + 1]; return `<tr><td>${when(r.t)}</td><td class="num">${fmtInt(r.cp)}</td><td class="num ${p ? (r.cp > p.cp ? 'gain' : r.cp < p.cp ? 'loss' : '') : ''}">${p ? signed(r.cp - p.cp) : '–'}</td><td class="what">${(r.changes || []).map(esc).join('<br>') || 'No visible change; the score moved on its own'}</td></tr>` }).join('')}
+    </tbody></table></div></div>`;
+  if(R.length > 1) drawChart(R);
+  $('#cpRefresh').addEventListener('click', async ev => {
+    ev.target.disabled = true; ev.target.textContent = 'Checking…';
+    try{ renderChar(await charCall('/local/character/refresh')) }catch(e){ renderChar(j, e.message) }
+  });
+  bindCharForm(j);
+}
+function charForm(){
+  return `<form class="charform" id="charForm"><input type="search" id="charName" placeholder="Character name" aria-label="Character name" required>
+    <select id="charRegion" aria-label="Region"><option value="nae">NA East</option><option value="naw">NA West</option><option value="eu">Europe</option><option value="la">S. America</option><option value="asia">Asia</option></select>
+    <button class="btn" type="submit">Track</button></form>`;
+}
+function bindCharForm(j){
+  const f = $('#charForm'); if(!f) return;
+  f.addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const b = f.querySelector('button'); b.disabled = true; b.textContent = 'Looking up…';
+    try{ renderChar(await charCall(`/local/character/set?name=${encodeURIComponent($('#charName').value)}&region=${$('#charRegion').value}`)) }
+    catch(e){ renderChar(j || {}, e.message) }
+  });
+}
+function drawChart(R){
+  const el = $('#cpChart'), W = 640, H = 220, L = 58, Rp = 14, T = 12, B = 28;
+  const xs = R.map(r => +new Date(r.t)), ys = R.map(r => r.cp);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), span = Math.max(x1 - x0, 36e5);
+  let y0 = Math.min(...ys), y1 = Math.max(...ys); const pad = Math.max((y1 - y0) * 0.15, 500); y0 -= pad; y1 += pad;
+  const step = (() => { const raw = (y1 - y0) / 4, m = Math.pow(10, Math.floor(Math.log10(raw))); return [1, 2, 2.5, 5, 10].map(k => k * m).find(s => s >= raw) })();
+  const ticks = []; for(let v = Math.ceil(y0 / step) * step; v <= y1; v += step) ticks.push(v);
+  const X = t => L + (t - x0) / span * (W - L - Rp), Y = v => T + (1 - (v - y0) / (y1 - y0)) * (H - T - B);
+  // CP holds between readings, so draw it as steps that end at "now"
+  const now = Math.max(Date.now(), x1), xe = X(Math.min(now, x0 + span * 1.08));
+  let d = `M${X(xs[0])},${Y(ys[0])}`; for(let i = 1; i < R.length; i++) d += `H${X(xs[i])}V${Y(ys[i])}`; d += `H${Math.min(xe, W - Rp)}`;
+  const area = d + `V${H - B}H${X(xs[0])}Z`;
+  const short = span < 2 * 864e5, fmtT = t => short ? new Date(t).toLocaleTimeString(undefined, {hour:'2-digit', minute:'2-digit'}) : new Date(t).toLocaleDateString(undefined, {month:'short', day:'numeric'});
+  const dateTicks = [x0, x0 + span / 2, x1].map(t => `<text class="axis" x="${X(t)}" y="${H - 8}" text-anchor="middle">${fmtT(t)}</text>`).join('');
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Combat Power over time, ${fmtInt(ys[0])} to ${fmtInt(ys[ys.length - 1])}">
+    ${ticks.map(v => `<line class="grid" x1="${L}" x2="${W - Rp}" y1="${Y(v)}" y2="${Y(v)}"/><text class="axis" x="${L - 8}" y="${Y(v) + 4}" text-anchor="end">${(v / 1000).toFixed(step < 1000 ? 1 : 0)}k</text>`).join('')}
+    <path class="area" d="${area}"/><path class="line" d="${d}"/>
+    <line class="cross" id="cpCross" y1="${T}" y2="${H - B}" visibility="hidden"/>
+    ${R.map((r, i) => `<circle class="pt" cx="${X(xs[i])}" cy="${Y(ys[i])}" r="4.5"/>`).join('')}
+    ${dateTicks}
+    ${R.map((r, i) => `<rect class="hit" data-i="${i}" x="${X(xs[i]) - 12}" y="${T}" width="24" height="${H - T - B}"/>`).join('')}
+  </svg><div class="tip" id="cpTip" hidden></div>`;
+  const tip = $('#cpTip'), cross = $('#cpCross');
+  el.querySelectorAll('.hit').forEach(h => {
+    const show = () => {
+      const i = +h.dataset.i, r = R[i], p = R[i - 1];
+      tip.innerHTML = `<div>${when(r.t)}</div><div><b>${fmtInt(r.cp)}</b> CP${p ? ` <span class="${r.cp >= p.cp ? 'gain' : 'loss'}">${signed(r.cp - p.cp)}</span>` : ''}</div><ul>${(r.changes || []).slice(0, 6).map(c => `<li>${esc(c)}</li>`).join('')}</ul>`;
+      tip.hidden = false;
+      const box = el.getBoundingClientRect(), sx = box.width / W, px = X(xs[i]) * sx;
+      tip.style.left = Math.min(Math.max(0, px - 120), box.width - tip.offsetWidth) + 'px';
+      tip.style.top = Math.max(0, Y(ys[i]) * sx - tip.offsetHeight - 12) + 'px';
+      cross.setAttribute('x1', X(xs[i])); cross.setAttribute('x2', X(xs[i])); cross.setAttribute('visibility', 'visible');
+    };
+    h.addEventListener('mouseenter', show); h.addEventListener('focus', show); h.addEventListener('click', show);
+    h.addEventListener('mouseleave', () => { tip.hidden = true; cross.setAttribute('visibility', 'hidden') });
+  });
+}
+async function loadChar(){
+  try{ renderChar(await charCall('/local/character')) }
+  catch(e){ renderChar({}, e.message) }
+  setInterval(async () => { try{ renderChar(await charCall('/local/character')) }catch(e){} }, 5 * 60 * 1000);
+}
+
+loadChar();
+</script></body></html>

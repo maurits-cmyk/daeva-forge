@@ -1,0 +1,15 @@
+__pycache__/
+dist/
+.wrangler/
+.claude/
+# personal: Combat Power tracker state, local caches and backups
+data/character.json
+data/cp_history.json
+data/index.before-*.html
+data/*.log
+data/hub_chunk.js
+data/prices_*.json
+data/velocity_*.json
+# planning notes and drafts stay local
+TODO.md
+*-request.md

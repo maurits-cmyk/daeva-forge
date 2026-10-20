@@ -1,0 +1,13 @@
+{
+  "_about": "Crafting proficiency EXP per successful craft, measured in-game. Failure = 30% of it, a Combo success = 130%. Keyed by product name and yield; applies to both factions. No public source lists EXP for every recipe (searched 2026-10-19), so everything not listed here is estimated in build_data.py.",
+  "entries": [
+    {"name": "Strong Leather", "y": 1, "exp": 20, "src": "Global, in-game (Armorsmithing Professional 34), 2026-10-19"},
+    {"name": "Orichalcum Cloak", "y": 1, "exp": 104, "src": "Global, in-game (Armorsmithing Professional 34; Combo success gave 135 = 1.3x), 2026-10-19"},
+    {"name": "Orichalcum Ingot", "y": 1, "exp": 20, "src": "KR, inven.co.kr/board/aion2/6444/1624"},
+    {"name": "Orichalcum Ingot", "y": 10, "exp": 112, "src": "KR, inven.co.kr/board/aion2/6444/1161"},
+    {"name": "Magic Crystal", "y": 1, "exp": 20, "src": "KR, inven.co.kr/board/aion2/6444/1161"},
+    {"name": "Magic Crystal", "y": 10, "exp": 112, "src": "KR, inven.co.kr/board/aion2/6444/1161"},
+    {"name": "Spiritstone Powder", "y": 3, "exp": 24, "src": "KR, inven.co.kr/board/aion2/6444/1161"},
+    {"name": "Spiritstone Powder", "y": 30, "exp": 112, "src": "KR, inven.co.kr/board/aion2/6444/1161"}
+  ]
+}

@@ -1,0 +1,6 @@
+// Cloudflare Worker that only serves the files in dist/ (built by `python hosting.py build` + `prices`)
+{
+  "name": "daeva-forge",
+  "compatibility_date": "2026-10-01",
+  "assets": { "directory": "./dist" }
+}
