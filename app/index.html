@@ -226,7 +226,7 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
     <fieldset>
       <legend>Show</legend>
       <div class="row"><label><input type="checkbox" id="canCraft"> Only recipes I can craft now</label></div>
-      <div class="row"><label><input type="checkbox" id="needListings" checked> Only items with sellers on the market</label></div>
+      <div class="row"><label><input type="checkbox" id="needListings"> Only items with sellers on the market</label></div>
     </fieldset>
     </div>
   </section>
@@ -239,7 +239,7 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
       <div class="row"><label><input type="checkbox" id="useBudget" checked> Plan with my Kina</label></div>
       <div class="mastery"><label for="budget">Kina to commit</label><input type="text" id="budget" inputmode="decimal" autocomplete="off" aria-describedby="budgetHint"></div>
       <span class="hint" id="budgetHint">E.g. 25M or 1.2B. Each recipe is judged as if you spent all of it there.</span>
-      <div class="row"><label><input type="checkbox" id="affordable" checked> Only crafts I can afford</label></div>
+      <div class="row"><label><input type="checkbox" id="affordable"> Only crafts I can afford</label></div>
       <div class="row"><label><input type="checkbox" id="riskRank" checked> Recommend crafts my Kina can ride out</label></div>
       <div class="mastery"><label for="pwin">Chance of profit for a safe bet (%)</label><input type="number" id="pwin" min="50" max="99.9" step="0.5" aria-describedby="sigmaHint"></div>
       <span class="hint" id="sigmaHint"></span>
@@ -363,13 +363,13 @@ const S = {
   mastery: Object.fromEntries(Object.entries(Object.assign({Blacksmithing:1,Tailoring:1,Jewelcrafting:1,Alchemy:1,Cooking:1}, store.get('mastery', {}))).map(([k, v]) => [k, Math.max(1, v)])),  // every profession starts at 1
   tax: store.get('tax', 12), sourcing: store.get('sourcing','cheapest'), credit: store.get('credit', true),
   groupPrice: store.get('groupPrice', false), groupDragon: store.get('groupDragon', false),
-  useBudget: store.get('useBudget', true), budget: store.get('budget', 25e6), affordable: store.get('affordable', true),
-  riskRank: store.get('riskRank', true), pwin: store.get('pwin', 95),
+  useBudget: store.get('useBudget', true), budget: store.get('budget', 25e6), affordable: store.get('affordable', false),
+  riskRank: store.get('riskRank', true), pwin: store.get('pwin', 90),
   slots: store.get('slots', true), slotRate: store.get('slotRate', 100000), hideSlow: store.get('hideSlow', true),
   mode: 'profit',  // Experience mode is shelved (2026-10-20): its card is hidden and its code kept for later xpStrategy: store.get('xpStrategy', 'cheap'), xpSell: store.get('xpSell', true),
   xpProf: store.get('xpProf', 'Blacksmithing'), xpTarget: store.get('xpTarget', null), xpOwn: store.get('xpOwn', {}),
   cols: store.get('cols', ['ppa', 'bad']),
-  canCraft: store.get('canCraft', false), needListings: store.get('needListings', true), unverified: store.get('unverified', false),
+  canCraft: store.get('canCraft', false), needListings: store.get('needListings', false), unverified: store.get('unverified', false),
   q:'', prof: store.get('prof',''), sort: store.get('sort', {k:'ppa', dir:-1}),
   src: store.get('src', {}), manual: store.get('manual', {}), open: null
 };
@@ -991,7 +991,7 @@ function buildSettings(){
   const syncBudgetUI = () => {
     $('#affordable').disabled = $('#riskRank').disabled = $('#budget').disabled = $('#pwin').disabled = !S.useBudget;
     const q = 1 - S.pwin / 100;
-    $('#sigmaHint').textContent = `A safe bet ends in profit at least ${S.pwin}% of the time. 90% is relaxed, 99% cautious.`;
+    $('#sigmaHint').textContent = `A safe bet ends in profit at least ${S.pwin}% of the time. Higher is more cautious.`;
   };
   $('#budget').value = kina(S.budget).replace('−', '');
   $('#budget').addEventListener('change', ev => {
@@ -1015,7 +1015,7 @@ function buildSettings(){
   }
   syncSlots();
   $('#pwin').value = S.pwin;
-  $('#pwin').addEventListener('change', ev => { S.pwin = Math.max(50, Math.min(99.9, +ev.target.value || 95)); ev.target.value = S.pwin; store.set('pwin', S.pwin); syncBudgetUI(); render() });
+  $('#pwin').addEventListener('change', ev => { S.pwin = Math.max(50, Math.min(99.9, +ev.target.value || 90)); ev.target.value = S.pwin; store.set('pwin', S.pwin); syncBudgetUI(); render() });
   $('#riskRank').addEventListener('change', ev => { if(ev.target.checked && S.mode === 'profit'){ S.sort = {k:'bad', dir:-1}; store.set('sort', S.sort) } });
   if(S.mode === 'profit' && S.useBudget && S.riskRank && !store.get('riskInit', false)){ S.sort = {k:'bad', dir:-1}; store.set('sort', S.sort); store.set('riskInit', true) }
   syncBudgetUI();
