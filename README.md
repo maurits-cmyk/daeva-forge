@@ -10,6 +10,7 @@ Not affiliated with, endorsed or sponsored by NCSOFT.
   after Aion2Market captures its prices) and deploys `dist/` to a Cloudflare Worker (`wrangler.jsonc`).
 - `hosting.py speeds` recomputes sale speeds once a day into `site/speeds/`.
 - Servers fetched: `site/servers.txt`.
+- `worker.js` handles the feedback form (POST /api/feedback) and emails it via Cloudflare Email Routing; everything else is static.
 
 ## Local use
 

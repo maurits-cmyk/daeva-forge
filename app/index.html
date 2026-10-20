@@ -56,9 +56,14 @@ fieldset{border:0;margin:0;padding:0;min-width:0;display:flex;flex-direction:col
 legend{font:600 11px/1 var(--f-body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:0 0 6px;margin-bottom:8px;border-bottom:1px solid var(--line);width:100%}
 .mastery{display:grid;grid-template-columns:1fr 70px;gap:6px 10px;align-items:center}
 label{font-size:13px}
-input[type=number],input[type=search],input[type=text],select{font:inherit;color:var(--ink);background:var(--field);border:1px solid var(--line-2);border-radius:3px;padding:5px 8px;min-width:0;width:100%}
+input[type=number],input[type=search],input[type=text],input[type=email],select,textarea{font:inherit;color:var(--ink);background:var(--field);border:1px solid var(--line-2);border-radius:3px;padding:5px 8px;min-width:0;width:100%}
 input[type=number],input[type=text]#budget,input[type=text]#slotRate{font-variant-numeric:tabular-nums;text-align:right}
 input[type=checkbox]{accent-color:var(--gold)}
+#feedback .mastery.fb{grid-template-columns:max-content minmax(0,1fr);column-gap:14px}
+#feedback textarea{min-height:132px;resize:vertical;line-height:1.45}
+#feedback .send{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+#feedback .send .ok{color:var(--gain)} #feedback .send .err{color:var(--loss)}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
 #mastery{grid-template-columns:max-content minmax(60px,1fr) 64px;column-gap:14px}
 input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:20px;margin:0;background:transparent;cursor:pointer;--p:0%}
 input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(90deg,var(--gold-2),var(--gold)) 0 0/var(--p) 100% no-repeat,var(--line-2)}
@@ -339,6 +344,25 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
     <span><span class="chip warn">last ask</span>no sellers now; last price seen</span>
     <span><span class="chip warn">est. success</span>success chance estimated</span>
   </div>
+
+  <section class="settings" id="feedback" aria-label="Feedback" hidden>
+    <h2 class="card-title">Feedback</h2>
+    <fieldset>
+      <legend>Message</legend>
+      <textarea id="fbMsg" maxlength="4000" aria-label="Your message" placeholder="A bug, an idea, a number that looks wrong…"></textarea>
+    </fieldset>
+    <fieldset>
+      <legend>About you (optional)</legend>
+      <div class="mastery fb">
+        <label for="fbKind">Kind</label><select id="fbKind"><option>Bug</option><option>Idea</option><option selected>Other</option></select>
+        <label for="fbName">Name</label><input type="text" id="fbName" maxlength="80" autocomplete="nickname" placeholder="in-game name">
+        <label for="fbEmail">Email</label><input type="email" id="fbEmail" maxlength="200" autocomplete="email" placeholder="for a reply">
+      </div>
+      <label class="hp" aria-hidden="true">Website <input type="text" id="fbWebsite" tabindex="-1" autocomplete="off"></label>
+      <div class="send"><button type="button" class="support-btn" id="fbSend">Send</button><span class="hint" id="fbStatus" role="status"></span></div>
+      <span class="hint">Goes to the maintainer by email, with your server and browser. Your email is only used to reply.</span>
+    </fieldset>
+  </section>
 
   <footer>
     <p>How it works: every attempt uses up its materials. A failure gives nothing; a success gives the item, or the Combo upgrade by chance. Prices are the lowest current asks, after fees, and assume the market buys everything you make. Small markets move when you buy or sell.</p>
@@ -948,6 +972,24 @@ function setMode(m){
   S.sort = store.get(sortKey(), m === 'exp' ? (S.xpStrategy === 'fast' ? {k:'xpa', dir:-1} : {k:'kxp', dir:1}) : {k:'bad', dir:-1});
   S.open = null; syncMode(); render();
 }
+function feedbackForm(){
+  const card = $('#feedback'), btn = $('#fbSend'), st = $('#fbStatus');
+  card.hidden = !S.hosted;  // only the hosted site can send mail
+  btn.addEventListener('click', async () => {
+    const message = $('#fbMsg').value.trim();
+    if(message.length < 3){ st.className = 'hint err'; st.textContent = 'Write a message first.'; $('#fbMsg').focus(); return }
+    btn.disabled = true; st.className = 'hint'; st.textContent = 'Sending…';
+    try{
+      const res = await fetch('/api/feedback', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+        message, kind: $('#fbKind').value, name: $('#fbName').value, email: $('#fbEmail').value, website: $('#fbWebsite').value,
+        server: S.server ? `${S.server.name} · ${S.server.region} · ${S.server.faction}` : ''})});
+      const j = await res.json().catch(() => ({}));
+      if(!res.ok || !j.ok) throw new Error(j.error || 'Sending failed. Please try again later.');
+      st.className = 'hint ok'; st.textContent = 'Sent. Thank you!'; $('#fbMsg').value = '';
+    }catch(e){ st.className = 'hint err'; st.textContent = e.message }
+    btn.disabled = false;
+  });
+}
 function supportButton(){
   const b = $('#supportBtn'), n = $('#supportNote'); let t;
   b.addEventListener('click', () => { n.hidden = false; clearTimeout(t); t = setTimeout(() => n.hidden = true, 5000) });
@@ -1137,7 +1179,7 @@ async function boot(){
   S.fetchedAt = S.data.built;
   if(!LIVE){ try{ const r = await fetch('prices/index.json', {cache:'no-cache'}); if(r.ok) S.hosted = await r.json() }catch(e){} }
   setInterval(statusBar, 6e4);  // keep "updated X min ago" current
-  buildSettings(); indexRecipes(); serverPicker(); statusBar(); render();
+  buildSettings(); indexRecipes(); serverPicker(); statusBar(); render(); feedbackForm();
   if(LIVE) loadLive(store.get('server', S.server.id));
   else if(S.hosted && S.hosted.servers.length){ const want = store.get('server', S.server.id); loadHosted(S.hosted.servers.includes(want) ? want : S.hosted.servers[0]) }
 }
