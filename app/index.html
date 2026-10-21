@@ -246,8 +246,8 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
   <section class="want" aria-label="What you want to craft">
     <h2 class="want-title"><span class="orn" aria-hidden="true"><i class="s">✦</i><i class="m">✦</i><i class="l">✦</i></span>I want to craft<span class="orn" aria-hidden="true"><i class="l">✦</i><i class="m">✦</i><i class="s">✦</i></span></h2>
     <div class="want-btns" role="group" aria-label="What you want to craft">
-      <button type="button" class="want-btn" data-mode="profit" aria-pressed="true">in bulk for profit</button>
-      <button type="button" class="want-btn" data-mode="single" aria-pressed="false">specific items</button>
+      <button type="button" class="want-btn" data-mode="single" aria-pressed="true">specific items</button>
+      <button type="button" class="want-btn" data-mode="profit" aria-pressed="false">in bulk for profit</button>
     </div>
   </section>
 
@@ -412,8 +412,8 @@ const S = {
   useBudget: store.get('useBudget', true), budget: store.get('budget', 25e6), affordable: store.get('affordable', false),
   riskRank: store.get('riskRank', true), pwin: store.get('pwin', 90),
   slots: store.get('slots', true), slotRate: store.get('slotRate', 100000), hideSlow: store.get('hideSlow', true),
-  // 'profit': crafting in bulk to sell; 'single': one particular item (gear upgrades). Experience mode ('exp') is shelved
-  mode: ['profit', 'single'].includes(store.get('mode', 'profit')) ? store.get('mode', 'profit') : 'profit', xpStrategy: store.get('xpStrategy', 'cheap'), xpSell: store.get('xpSell', true),
+  // 'single' (default): specific items for yourself, mostly gear upgrades; 'profit': crafting in bulk to sell. Experience mode ('exp') is shelved
+  mode: ['profit', 'single'].includes(store.get('mode', 'single')) ? store.get('mode', 'single') : 'single', xpStrategy: store.get('xpStrategy', 'cheap'), xpSell: store.get('xpSell', true),
   xpProf: store.get('xpProf', 'Blacksmithing'), xpTarget: store.get('xpTarget', null), xpOwn: store.get('xpOwn', {}),
   cols: store.get('cols', ['ppa', 'bad']),
   canCraft: store.get('canCraft', false), needListings: store.get('needListings', false), unverified: store.get('unverified', false),
