@@ -40,12 +40,14 @@ h1 small{display:block;font:500 11px/1.4 var(--f-body);letter-spacing:.14em;text
 .card-title::before{content:"✦";color:var(--cyan);font-size:11px}
 .settings>.card-title:first-child{margin-top:-14px;border-radius:4px 4px 0 0}
 .want{background:var(--panel);border:1px solid var(--line);border-radius:4px;overflow:hidden;display:flex;flex-direction:column}
-.want-title{font:400 26px/1.1 var(--f-display);letter-spacing:.06em;margin:0;padding:18px 16px 16px;text-align:center;color:var(--ink)}
+.want-title{font:600 15px/1.2 var(--f-body);letter-spacing:.22em;text-transform:uppercase;margin:0;padding:16px 16px 14px;text-align:center;color:var(--ink);display:flex;align-items:center;justify-content:center;gap:12px}
+.want-title::before,.want-title::after{content:"✦";color:var(--cyan);font-size:11px;letter-spacing:0}
 .want-btns{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line)}
-.want-btn{font:400 19px/1.2 var(--f-display);letter-spacing:.03em;padding:18px 12px;border:0;border-radius:0;background:var(--panel-2);color:var(--muted);cursor:pointer;transition:background .12s,color .12s}
+.want-btn{font:600 13px/1.2 var(--f-body);letter-spacing:.16em;text-transform:uppercase;padding:16px 12px;border:0;border-radius:0;background:var(--panel-2);color:var(--muted);cursor:pointer;position:relative;transition:background .12s,color .12s}
 .want-btn+.want-btn{border-left:1px solid var(--line)}
 .want-btn:hover{color:var(--ink)}
-.want-btn[aria-pressed="true"]{color:#fff;background:linear-gradient(180deg,var(--accent-soft),rgba(118,150,190,.04));box-shadow:inset 0 -2px 0 var(--accent),0 6px 18px -10px var(--glow)}
+.want-btn[aria-pressed="true"]{color:#fff;background:linear-gradient(180deg,rgba(118,150,190,.16),rgba(118,150,190,.03))}
+.want-btn[aria-pressed="true"]::after{content:"";position:absolute;left:12%;right:12%;bottom:0;height:2px;background:linear-gradient(90deg,transparent,#dff1ff,transparent);box-shadow:0 0 10px var(--glow)}
 .mtable input.owned{width:64px;text-align:right}
 .owninline{display:none}
 .owninline input.owned{width:46px;padding:2px 5px;margin:0;font:400 13px var(--f-num);letter-spacing:0}
@@ -237,11 +239,6 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
       </div>
       <span class="hint">10% sales tax + 2% listing fee.</span>
     </fieldset>
-    <fieldset>
-      <legend>Show</legend>
-      <div class="row"><label><input type="checkbox" id="canCraft"> Only recipes I can craft now</label></div>
-      <div class="row"><label><input type="checkbox" id="needListings"> Only items with sellers on the market</label></div>
-    </fieldset>
     </div>
   </section>
 
@@ -277,6 +274,7 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
       <div class="row" id="manualRow" hidden><span class="hint" id="manualInfo"></span><button type="button" class="chip" id="clearManual">Clear my prices</button></div>
     </fieldset>
     </div>
+    <div class="stack">
     <fieldset>
       <legend>Selling</legend>
       <div class="row"><label><input type="checkbox" id="slots" checked> Gear must earn its sale slot</label></div>
@@ -289,6 +287,12 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
       <div class="row" style="padding-left:22px"><label><input type="checkbox" id="groupDragon"> Also for Dragon Lord gear</label></div>
       <span class="hint">Supply requests accept any item in a group, so buyers take the cheapest.</span>
     </fieldset>
+    <fieldset>
+      <legend>Show</legend>
+      <div class="row"><label><input type="checkbox" id="canCraft"> Only recipes I can craft now</label></div>
+      <div class="row"><label><input type="checkbox" id="needListings"> Only items with sellers on the market</label></div>
+    </fieldset>
+    </div>
   </section>
 
   <section class="settings focus" id="focusExp" aria-label="Experience settings" hidden>
@@ -733,8 +737,8 @@ const COLS = [
 // Only as many optional columns as the window has room for (no sideways scrolling), headline figures first
 const PRIORITY_BY_MODE = {profit: ['ppa', 'bad'], single: ['one'], exp: ['kxp', 'xpa', 'tgt']};
 const DEF_COLS = {profit: ['ppa', 'bad'], single: ['one'], exp: ['xpa', 'kxp', 'tgt']};
-const colsKey = () => ({exp: 'colsExp', single: 'colsSingle'})[S.mode] || 'cols', sortKey = () => ({exp: 'sortExp', single: 'sortSingle'})[S.mode] || 'sort';
-const defaultSort = m => m === 'exp' ? (S.xpStrategy === 'fast' ? {k:'xpa', dir:-1} : {k:'kxp', dir:1}) : m === 'single' ? {k:'name', dir:1} : {k:'bad', dir:-1};
+const colsKey = () => ({exp: 'colsExp', single: 'colsSingle'})[S.mode] || 'cols', sortKey = () => ({exp: 'sortExp', single: 'sortSingleLevel'})[S.mode] || 'sort';
+const defaultSort = m => m === 'exp' ? (S.xpStrategy === 'fast' ? {k:'xpa', dir:-1} : {k:'kxp', dir:1}) : m === 'single' ? {k:'ml', dir:-1} : {k:'bad', dir:-1};
 const showCol = c => (!c.exp || S.mode === 'exp') && (!c.single || S.mode === 'single') && (!c.plan || S.mode === 'profit');
 const costOfOne = e => e.cost != null && e.s.p ? e.cost / (e.s.p * e.r.y) : null;
 let HIDDEN_COLS = 0;
@@ -761,17 +765,17 @@ function render(room = 99, pre = null, stacked = false){  // room: optional colu
       // leveling: recipes of the chosen profession you can craft now that give EXP
       if(e.r.prof !== S.xpProf || e.s.locked || e.xp.base == null) return false;
     } else {
-      if(S.canCraft && e.s.locked) return false;
+      if(S.mode === 'profit' && S.canCraft && e.s.locked) return false;
       if(S.mode === 'profit' && S.useBudget && S.affordable && e.cost != null && e.cost > S.budget) return false;
       if(S.mode === 'profit' && S.slots && S.hideSlow && e.sale.worth === false) return false;
-      if(S.needListings && !(e.base && e.base.kind !== 'last' && e.list > 0)) return false;
+      if(S.mode === 'profit' && S.needListings && !(e.base && e.base.kind !== 'last' && e.list > 0)) return false;
     }
     if(S.mode !== 'exp' && S.prof && e.r.prof !== S.prof) return false;
     if(q && !(e.name.toLowerCase().includes(q) || e.r.c.some(([k]) => item(k)[0].toLowerCase().includes(q)))) return false;
     return true;
   });
   const {k, dir} = S.sort;
-  const val = e => k === 'name' ? e.name : k === 'prof' ? e.r.prof + String(e.r.ml).padStart(3,'0') : k === 'p' ? e.s.p : k === 'list' ? e.list
+  const val = e => k === 'ml' ? e.r.ml : k === 'name' ? e.name : k === 'prof' ? e.r.prof + String(e.r.ml).padStart(3,'0') : k === 'p' ? e.s.p : k === 'list' ? e.list
     : k === 'n' ? (e.plan ? e.plan.n : null) : k === 'bad' ? (e.plan ? e.plan.bad : null)
     : k === 'xpa' ? e.xp.xpa : k === 'kxp' ? e.xp.kxp : k === 'tgt' ? (e.xp.tgt ? e.xp.tgt.crafts : null)
     : k === 'one' ? costOfOne(e) : k === 'sale' ? e.sale.per : k === 'ph' ? (e.sale.ph != null && isFinite(e.sale.hours) ? e.sale.ph : null) : k === 'speed' ? (e.sale.hours == null ? null : isFinite(e.sale.hours) ? e.sale.hours : 1e9) : e[k];
@@ -781,14 +785,14 @@ function render(room = 99, pre = null, stacked = false){  // room: optional colu
   if(!pre) rows.sort((x, y) => {
     const a = val(x), b = val(y);
     if(a == null && b == null) return 0; if(a == null) return 1; if(b == null) return -1;
-    return (typeof a === 'string' ? a.localeCompare(b) : a - b) * dir;
+    return (typeof a === 'string' ? a.localeCompare(b) : a - b) * dir || x.name.localeCompare(y.name);
   });
   const maxP = Math.max(1, ...rows.map(e => Math.abs(e.ppa || 0)));
   const body = $('#rows');
   if(!rows.length){ body.innerHTML = `<tr><td colspan="${cols}" class="empty">No recipes match. Try clearing the search or loosening the filters.</td></tr>`; summary(rows); return }
   body.innerHTML = rows.map(e => {
     const g = item(e.r.p)[1] || 'Common';
-    const chips = (e.s.locked ? `<span class="chip lock">needs ${e.r.ml}</span>` : '') + (e.flags.includes('stale') ? '<span class="chip warn">last ask</span>' : '') + (e.flags.includes('upstale') ? '<span class="chip warn">upgrade: last ask</span>' : '') + (S.mode === 'profit' && e.flags.includes('trashB') ? `<span class="chip risk" title="Not worth a sale slot, counted as trashed">${e.r.combo ? 'ordinary ones trashed' : 'not worth a slot'}</span>` : '') + (S.mode === 'profit' && e.flags.includes('trashU') ? '<span class="chip risk" title="Not worth a sale slot, counted as trashed">upgrades trashed</span>' : '') + (S.mode === 'profit' && e.base && e.base.kind === 'group' ? `<span class="chip" title="${esc(e.base.group.name)}">priced as ${esc(item(e.base.via)[0])}</span>` : '') + (e.missing.length ? '<span class="chip warn">price missing</span>' : '') + (e.s.p == null ? '<span class="chip warn">no success data</span>' : e.s.est ? '<span class="chip warn">est. success</span>' : '') + (e.r.ml === 0 ? '<span class="chip warn">unverified recipe</span>' : '')
+    const chips = (e.s.locked && S.mode !== 'single' ? `<span class="chip lock">needs ${e.r.ml}</span>` : '') + (e.flags.includes('stale') ? '<span class="chip warn">last ask</span>' : '') + (e.flags.includes('upstale') ? '<span class="chip warn">upgrade: last ask</span>' : '') + (S.mode === 'profit' && e.flags.includes('trashB') ? `<span class="chip risk" title="Not worth a sale slot, counted as trashed">${e.r.combo ? 'ordinary ones trashed' : 'not worth a slot'}</span>` : '') + (S.mode === 'profit' && e.flags.includes('trashU') ? '<span class="chip risk" title="Not worth a sale slot, counted as trashed">upgrades trashed</span>' : '') + (S.mode === 'profit' && e.base && e.base.kind === 'group' ? `<span class="chip" title="${esc(e.base.group.name)}">priced as ${esc(item(e.base.via)[0])}</span>` : '') + (e.missing.length ? '<span class="chip warn">price missing</span>' : '') + (e.s.p == null ? '<span class="chip warn">no success data</span>' : e.s.est ? '<span class="chip warn">est. success</span>' : '') + (e.r.ml === 0 ? '<span class="chip warn">unverified recipe</span>' : '')
       + (S.mode === 'profit' && S.slots && e.sale.worth === false ? `<span class="chip risk" title="Earns ${kina(e.sale.ph)} per slot-hour (${kina(e.sale.per)} per listing, sells in ${fmtHours(e.sale.hours)}); a slot-hour is worth ${kina(S.slotRate)}">not worth a slot</span>` : '')
       + (S.mode === 'exp' && e.xp.src === 'est' ? '<span class="chip warn" title="Estimated from recipe level and grade; open the recipe to enter the EXP you see in-game">est. EXP</span>' : '')
       + (S.mode === 'exp' && e.xp.src === 'yours' ? '<span class="chip">your EXP</span>' : '')
@@ -798,7 +802,7 @@ function render(room = 99, pre = null, stacked = false){  // room: optional colu
     const showProf = vis.some(c => c.k === 'prof');
     const tone = v => v == null ? '' : v >= 0 ? 'gain' : 'loss';
     const cell = {
-      name: () => `<td><span class="name g-${esc(g)}">${esc(e.name)}</span>${e.r.y > 1 ? `<span class="chip">×${e.r.y}</span>` : ''}${chips}<span class="sub">${showProf ? '' : esc(pl(e.r.prof)) + ' Lv ' + e.r.ml + ' · '}${e.r.combo ? 'Combo ' + e.r.combo.pct + '%: ' + esc(item(e.r.combo.p)[0]) : 'no Combo upgrade'}</span></td>`,
+      name: () => `<td><span class="name g-${esc(g)}">${esc(e.name)}</span>${e.r.y > 1 ? `<span class="chip">×${e.r.y}</span>` : ''}${chips}<span class="sub">${showProf ? '' : esc(pl(e.r.prof)) + ' ' + (e.s.locked && S.mode === 'single' ? `<span class="loss" title="Your ${esc(pl(e.r.prof))} mastery is ${S.mastery[e.r.prof] || 1}">Lv ${e.r.ml}</span>` : 'Lv ' + e.r.ml) + ' · '}${e.r.combo ? 'Combo ' + e.r.combo.pct + '%: ' + esc(item(e.r.combo.p)[0]) : 'no Combo upgrade'}</span></td>`,
       prof: () => `<td>${esc(pl(e.r.prof))}<span class="sub">Lv ${e.r.ml} · you ${S.mastery[e.r.prof] || 1}</span></td>`,
       p: () => `<td class="num">${pct(e.s.p)}</td>`,
       cost: () => `<td class="num">${kina(e.cost)}</td>`,
