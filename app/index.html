@@ -41,7 +41,8 @@ h1 small{display:block;font:500 11px/1.4 var(--f-body);letter-spacing:.14em;text
 .settings>.card-title:first-child{margin-top:-14px;border-radius:4px 4px 0 0}
 .want{background:var(--panel);border:1px solid var(--line);border-radius:4px;overflow:hidden;display:flex;flex-direction:column}
 .want-title{font:600 15px/1.2 var(--f-body);letter-spacing:.22em;text-transform:uppercase;margin:0;padding:16px 16px 14px;text-align:center;color:var(--ink);display:flex;align-items:center;justify-content:center;gap:12px}
-.want-title::before,.want-title::after{content:"✦";color:var(--cyan);font-size:11px;letter-spacing:0}
+.want-title .orn{display:inline-flex;align-items:center;gap:5px;color:var(--cyan);letter-spacing:0;line-height:1}
+.want-title .orn i{font-style:normal}.want-title .orn .s{font-size:8px}.want-title .orn .m{font-size:11px}.want-title .orn .l{font-size:15px}
 .want-btns{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line)}
 .want-btn{font:600 13px/1.2 var(--f-body);letter-spacing:.16em;text-transform:uppercase;padding:16px 12px;border:0;border-radius:0;background:var(--panel-2);color:var(--muted);cursor:pointer;position:relative;transition:background .12s,color .12s}
 .want-btn+.want-btn{border-left:1px solid var(--line)}
@@ -243,7 +244,7 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
   </section>
 
   <section class="want" aria-label="What you want to craft">
-    <h2 class="want-title">I want to craft…</h2>
+    <h2 class="want-title"><span class="orn" aria-hidden="true"><i class="s">✦</i><i class="m">✦</i><i class="l">✦</i></span>I want to craft…<span class="orn" aria-hidden="true"><i class="l">✦</i><i class="m">✦</i><i class="s">✦</i></span></h2>
     <div class="want-btns" role="group" aria-label="What you want to craft">
       <button type="button" class="want-btn" data-mode="profit" aria-pressed="true">in bulk for profit</button>
       <button type="button" class="want-btn" data-mode="single" aria-pressed="false">a particular item</button>
