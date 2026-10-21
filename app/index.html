@@ -124,6 +124,15 @@ details>summary{list-style-position:inside}
 .bar{display:inline-block;height:5px;border-radius:1px;background:var(--gain);vertical-align:middle;margin-left:6px;opacity:.8;box-shadow:0 0 6px rgba(111,211,138,.4)}
 .bar.neg{background:var(--loss);box-shadow:0 0 6px rgba(239,90,79,.35)}
 tr.sheet>td{background:rgba(5,6,9,.55);padding:0;border-bottom:1px solid var(--accent)}
+/* narrow screens: each recipe is a card (name on top, every ticked figure below with its label); headings become sort buttons */
+#tbl.stacked,#tbl.stacked>thead,#tbl.stacked>tbody,#tbl.stacked>tbody>tr.sheet,#tbl.stacked>tbody>tr.sheet>td{display:block}
+#tbl.stacked>thead>tr{display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px;background:var(--bar);border-bottom:1px solid var(--line)}
+#tbl.stacked>thead>tr>th{position:static;padding:5px 8px;border:1px solid var(--line-2);border-radius:3px;background:rgba(255,255,255,.03);text-align:left}
+#tbl.stacked>thead>tr>th[aria-sort="ascending"],#tbl.stacked>thead>tr>th[aria-sort="descending"]{color:var(--ink);border-color:var(--accent)}
+#tbl.stacked>tbody>tr.rec{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px 14px;padding:10px 12px;border-bottom:1px solid var(--line)}
+#tbl.stacked>tbody>tr.rec>td{padding:0;border:0;text-align:left}
+#tbl.stacked>tbody>tr.rec>td:first-child{grid-column:1/-1}
+#tbl.stacked>tbody>tr.rec>td[data-label]::before{content:attr(data-label);display:block;font:600 10px/1.4 var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .sheetin{padding:14px 16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));gap:18px}
 /* section headers inside a recipe: the game's grey title bar with centred small caps */
 .sheetin h3{font:600 11.5px/1 var(--f-body);letter-spacing:.12em;text-transform:uppercase;color:var(--ink);text-align:center;background:var(--bar);border:1px solid var(--line);border-radius:2px;padding:7px 10px;margin:0 0 8px}
@@ -729,7 +738,7 @@ function colMenu(){
     + (HIDDEN_COLS ? `<span class="hint">${HIDDEN_COLS} ticked column${HIDDEN_COLS > 1 ? 's' : ''} hidden; widen the window to see ${HIDDEN_COLS > 1 ? 'them' : 'it'}.</span>` : '')
     + '<button type="button" class="chip" id="colReset">Back to the default three</button>';
 }
-function render(room = 99, pre = null){  // room: optional columns to try; pre: rows already evaluated and sorted
+function render(room = 99, pre = null, stacked = false){  // room: optional columns to try; pre: rows already evaluated and sorted; stacked: card layout
   if(!pre) memo = new Map();
   const q = S.q.trim().toLowerCase();
   let rows = pre || RECIPES.map(evaluate).filter(e => {
@@ -751,7 +760,8 @@ function render(room = 99, pre = null){  // room: optional columns to try; pre: 
     : k === 'n' ? (e.plan ? e.plan.n : null) : k === 'bad' ? (e.plan ? e.plan.bad : null)
     : k === 'xpa' ? e.xp.xpa : k === 'kxp' ? e.xp.kxp : k === 'tgt' ? (e.xp.tgt ? e.xp.tgt.crafts : null)
     : k === 'sale' ? e.sale.per : k === 'ph' ? (e.sale.ph != null && isFinite(e.sale.hours) ? e.sale.ph : null) : k === 'speed' ? (e.sale.hours == null ? null : isFinite(e.sale.hours) ? e.sale.hours : 1e9) : e[k];
-  const vis = visibleCols(room), cols = vis.length;
+  const vis = visibleCols(stacked ? 99 : room), cols = vis.length;
+  $('#tbl').classList.toggle('stacked', stacked);
   $('#thead').innerHTML = '<tr>' + vis.map(c => `<th data-k="${c.k}"${c.num ? ' class="num"' : ''}${c.title ? ` title="${esc(c.title)}"` : ''} aria-sort="${c.k === k ? (dir < 0 ? 'descending' : 'ascending') : 'none'}">${c.label}</th>`).join('') + '</tr>';
   if(!pre) rows.sort((x, y) => {
     const a = val(x), b = val(y);
@@ -790,13 +800,17 @@ function render(room = 99, pre = null){  // room: optional columns to try; pre: 
       speed: () => `<td class="num">${e.sale.hours == null ? '–' : !isFinite(e.sale.hours) ? '> 1 week' : e.sale.hours < 48 ? (e.sale.hours < 1 ? '<1 h' : Math.round(e.sale.hours) + ' h') : (e.sale.hours / 24).toFixed(1) + ' d'}</td>`,
       bad: () => `<td class="num ${tone(e.plan && e.plan.bad)}">${e.plan && e.plan.bad != null ? kina(e.plan.bad) : '–'}</td>`,
     };
-    return `<tr class="rec${open ? ' open' : ''}${e.s.locked ? ' locked' : ''}" data-id="${e.r.id}" tabindex="0" aria-expanded="${open}">${vis.map(c => cell[c.k]()).join('')}</tr>`
+    return `<tr class="rec${open ? ' open' : ''}${e.s.locked ? ' locked' : ''}" data-id="${e.r.id}" tabindex="0" aria-expanded="${open}">${vis.map(c => c.k === 'name' ? cell.name() : cell[c.k]().replace('<td', `<td data-label="${esc(c.label)}"`)).join('')}</tr>`
       + (open ? `<tr class="sheet"><td colspan="${cols}">${sheet(e)}</td></tr>` : '');
   }).join('');
   summary(rows);
-  // never scroll sideways: drop the lowest-priority column and redraw until the table fits
+  // never scroll sideways: on narrow screens switch to cards (all ticked columns); otherwise drop the
+  // lowest-priority column and redraw until the table fits
   const box = $('.tablebox'), tbl = $('#tbl');
-  if(tbl.scrollWidth > box.clientWidth + 1 && cols > 2) return render(cols - 2, rows);
+  if(!stacked && tbl.scrollWidth > box.clientWidth + 1){
+    if(box.clientWidth < 560) return render(99, rows, true);
+    if(cols > 2) return render(cols - 2, rows);
+  }
 }
 function summary(rows){
   if(S.mode === 'exp'){
