@@ -39,14 +39,17 @@ h1 small{display:block;font:500 11px/1.4 var(--f-body);letter-spacing:.14em;text
 .card-title{grid-column:1/-1;font:600 12px/1 var(--f-body);letter-spacing:.14em;text-transform:uppercase;color:var(--ink);margin:0 -16px 2px;padding:9px 16px;background:var(--bar);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
 .card-title::before{content:"✦";color:var(--cyan);font-size:11px}
 .settings>.card-title:first-child{margin-top:-14px;border-radius:4px 4px 0 0}
-.want{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:14px;display:flex;flex-direction:column;gap:10px}
-.want-title{font:400 22px/1 var(--f-display);letter-spacing:.06em;text-transform:uppercase;margin:0;text-align:center}
-.want-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.want-btn{font:inherit;display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 10px;border:1px solid var(--line);border-radius:3px;background:var(--panel-2);color:var(--ink);cursor:pointer;text-align:center}
-.want-btn:hover{border-color:var(--line-2)}
-.want-btn[aria-pressed="true"]{border-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),rgba(118,150,190,.06));color:#fff}
-.want-name{font:400 20px/1.1 var(--f-display)}
-.want-sub{font-size:12px;color:var(--muted)}
+.want{background:var(--panel);border:1px solid var(--line);border-radius:4px;overflow:hidden;display:flex;flex-direction:column}
+.want-title{font:400 26px/1.1 var(--f-display);letter-spacing:.06em;margin:0;padding:18px 16px 16px;text-align:center;color:var(--ink)}
+.want-btns{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line)}
+.want-btn{font:400 19px/1.2 var(--f-display);letter-spacing:.03em;padding:18px 12px;border:0;border-radius:0;background:var(--panel-2);color:var(--muted);cursor:pointer;transition:background .12s,color .12s}
+.want-btn+.want-btn{border-left:1px solid var(--line)}
+.want-btn:hover{color:var(--ink)}
+.want-btn[aria-pressed="true"]{color:#fff;background:linear-gradient(180deg,var(--accent-soft),rgba(118,150,190,.04));box-shadow:inset 0 -2px 0 var(--accent),0 6px 18px -10px var(--glow)}
+.mtable input.owned{width:64px;text-align:right}
+.owninline{display:none}
+.owninline input.owned{width:46px;padding:2px 5px;margin:0;font:400 13px var(--f-num);letter-spacing:0}
+.sheetin.single{grid-template-columns:minmax(0,1fr)}
 .adv{display:block;padding-block:0}
 .adv summary{cursor:pointer;list-style-position:inside;margin:0 -16px;border-radius:4px}
 .adv details[open] summary{border-radius:4px 4px 0 0}
@@ -141,6 +144,8 @@ tr.sheet>td{background:rgba(5,6,9,.55);padding:0;border-bottom:1px solid var(--a
 .sheetin tr.tree td{padding-block:6px}
 .sheetin tr.tree td:first-child{width:45%}
 .sheetin tr.tnote td span{display:block}
+.tname{padding-left:calc(var(--d,0) * 14px)}
+.tindent{padding-left:calc(var(--d,0) * 14px + 22px)}
 .sheetin tr.tree:not(.d0) td{font-size:13px}
 .sheetin tr.tree:not(.d0){background:rgba(0,0,0,.18)}
 .tname{display:inline-flex;align-items:flex-start;gap:4px}
@@ -197,6 +202,10 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
   .sheetin th,.sheetin td{padding:5px 4px}
   .sheetin .q{display:none}
   .qinline{display:inline;color:var(--muted);font-family:var(--f-num)}
+  .sheetin .own{display:none}
+  .sheetin .tname{overflow-wrap:anywhere;padding-left:calc(var(--d,0) * 8px)}
+  .sheetin .tindent{padding-left:calc(var(--d,0) * 8px + 18px)}  /* long names may wrap mid-word rather than push Cost off narrow screens */
+  .owninline{display:flex;flex-direction:column;align-items:flex-start;gap:2px;margin-top:4px;font:600 10px/1.2 var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
   .sheetin tr.tree td:first-child{width:auto}
   .opt{padding:2px 5px;column-gap:6px}
   .kv{padding:8px}
@@ -211,13 +220,6 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
   </header>
 
 
-  <section class="want" aria-label="What you want from crafting" hidden>
-    <h2 class="want-title">I want</h2>
-    <div class="want-btns" role="group" aria-label="Focus">
-      <button type="button" class="want-btn" data-mode="profit" aria-pressed="true"><span class="want-name">Profit</span><span class="want-sub">Most Kina for your materials and sale slots</span></button>
-      <button type="button" class="want-btn" data-mode="exp" aria-pressed="false"><span class="want-name">Experience</span><span class="want-sub">Level a profession cheaply or as fast as possible</span></button>
-    </div>
-  </section>
 
   <section class="settings" aria-label="General settings">
     <h2 class="card-title">General</h2>
@@ -240,6 +242,14 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
       <div class="row"><label><input type="checkbox" id="canCraft"> Only recipes I can craft now</label></div>
       <div class="row"><label><input type="checkbox" id="needListings"> Only items with sellers on the market</label></div>
     </fieldset>
+    </div>
+  </section>
+
+  <section class="want" aria-label="What you want to craft">
+    <h2 class="want-title">I want to craft…</h2>
+    <div class="want-btns" role="group" aria-label="What you want to craft">
+      <button type="button" class="want-btn" data-mode="profit" aria-pressed="true">in bulk for profit</button>
+      <button type="button" class="want-btn" data-mode="single" aria-pressed="false">a particular item</button>
     </div>
   </section>
 
@@ -397,12 +407,13 @@ const S = {
   useBudget: store.get('useBudget', true), budget: store.get('budget', 25e6), affordable: store.get('affordable', false),
   riskRank: store.get('riskRank', true), pwin: store.get('pwin', 90),
   slots: store.get('slots', true), slotRate: store.get('slotRate', 100000), hideSlow: store.get('hideSlow', true),
-  mode: 'profit',  // Experience mode is shelved (2026-10-20): its card is hidden and its code kept for later xpStrategy: store.get('xpStrategy', 'cheap'), xpSell: store.get('xpSell', true),
+  // 'profit': crafting in bulk to sell; 'single': one particular item (gear upgrades). Experience mode ('exp') is shelved
+  mode: ['profit', 'single'].includes(store.get('mode', 'profit')) ? store.get('mode', 'profit') : 'profit', xpStrategy: store.get('xpStrategy', 'cheap'), xpSell: store.get('xpSell', true),
   xpProf: store.get('xpProf', 'Blacksmithing'), xpTarget: store.get('xpTarget', null), xpOwn: store.get('xpOwn', {}),
   cols: store.get('cols', ['ppa', 'bad']),
   canCraft: store.get('canCraft', false), needListings: store.get('needListings', false), unverified: store.get('unverified', false),
   q:'', prof: store.get('prof',''), sort: store.get('sort', {k:'ppa', dir:-1}),
-  src: store.get('src', {}), manual: store.get('manual', {}), open: null
+  src: store.get('src', {}), manual: store.get('manual', {}), owned: store.get('owned', {}), open: null
 };
 const $ = s => document.querySelector(s);
 
@@ -702,6 +713,7 @@ function parseKina(txt){
 /* ---------- rendering ---------- */
 const COLS = [
   {k:'name', label:'Item', fixed:true},
+  {k:'one', label:'Cost to make one', num:true, single:true, title:'Expected cost of one finished item, failed attempts included'},
   {k:'prof', label:'Profession'},
   {k:'p', label:'Success', num:true},
   {k:'cost', label:'Cost / attempt', num:true},
@@ -719,13 +731,16 @@ const COLS = [
   {k:'bad', label:'Bad-luck profit', num:true, plan:true, title:'Total profit from spending all your Kina on this, with bad luck'},
 ];
 // Only as many optional columns as the window has room for (no sideways scrolling), headline figures first
-const PRIORITY_BY_MODE = {profit: ['ppa', 'bad'], exp: ['kxp', 'xpa', 'tgt']};
-const DEF_COLS = {profit: ['ppa', 'bad'], exp: ['xpa', 'kxp', 'tgt']};
-const colsKey = () => S.mode === 'exp' ? 'colsExp' : 'cols', sortKey = () => S.mode === 'exp' ? 'sortExp' : 'sort';
+const PRIORITY_BY_MODE = {profit: ['ppa', 'bad'], single: ['one'], exp: ['kxp', 'xpa', 'tgt']};
+const DEF_COLS = {profit: ['ppa', 'bad'], single: ['one'], exp: ['xpa', 'kxp', 'tgt']};
+const colsKey = () => ({exp: 'colsExp', single: 'colsSingle'})[S.mode] || 'cols', sortKey = () => ({exp: 'sortExp', single: 'sortSingle'})[S.mode] || 'sort';
+const defaultSort = m => m === 'exp' ? (S.xpStrategy === 'fast' ? {k:'xpa', dir:-1} : {k:'kxp', dir:1}) : m === 'single' ? {k:'name', dir:1} : {k:'bad', dir:-1};
+const showCol = c => (!c.exp || S.mode === 'exp') && (!c.single || S.mode === 'single') && (!c.plan || S.mode === 'profit');
+const costOfOne = e => e.cost != null && e.s.p ? e.cost / (e.s.p * e.r.y) : null;
 let HIDDEN_COLS = 0;
 function visibleCols(room){
   const PRIORITY = PRIORITY_BY_MODE[S.mode];
-  const wanted = COLS.filter(c => !c.fixed && S.cols.includes(c.k) && (!c.plan || (S.useBudget && S.mode === 'profit')) && (!c.exp || S.mode === 'exp'))
+  const wanted = COLS.filter(c => !c.fixed && S.cols.includes(c.k) && showCol(c) && (!c.plan || S.useBudget))
     .sort((a, b) => (PRIORITY.includes(b.k) - PRIORITY.includes(a.k)) || COLS.indexOf(a) - COLS.indexOf(b));
   room = Math.max(1, Math.min(room, wanted.length));
   HIDDEN_COLS = wanted.length - room;
@@ -733,10 +748,10 @@ function visibleCols(room){
   return COLS.filter(c => c.fixed || keep.has(c.k));
 }
 function colMenu(){
-  $('#colPop').innerHTML = COLS.filter(c => !c.fixed && (!c.exp || S.mode === 'exp') && (!c.plan || S.mode === 'profit')).map(c => `<label><input type="checkbox" data-col="${c.k}"${S.cols.includes(c.k) ? ' checked' : ''}${c.plan && !S.useBudget ? ' disabled' : ''}> ${c.label}</label>`).join('')
+  $('#colPop').innerHTML = COLS.filter(c => !c.fixed && showCol(c)).map(c => `<label><input type="checkbox" data-col="${c.k}"${S.cols.includes(c.k) ? ' checked' : ''}${c.plan && !S.useBudget ? ' disabled' : ''}> ${c.label}</label>`).join('')
     + (S.useBudget ? '' : '<span class="hint">Attempts and Bad-luck profit need "Plan with my Kina".</span>')
     + (HIDDEN_COLS ? `<span class="hint">${HIDDEN_COLS} ticked column${HIDDEN_COLS > 1 ? 's' : ''} hidden; widen the window to see ${HIDDEN_COLS > 1 ? 'them' : 'it'}.</span>` : '')
-    + '<button type="button" class="chip" id="colReset">Back to the default three</button>';
+    + '<button type="button" class="chip" id="colReset">Back to the defaults</button>';
 }
 function render(room = 99, pre = null, stacked = false){  // room: optional columns to try; pre: rows already evaluated and sorted; stacked: card layout
   if(!pre) memo = new Map();
@@ -747,11 +762,11 @@ function render(room = 99, pre = null, stacked = false){  // room: optional colu
       if(e.r.prof !== S.xpProf || e.s.locked || e.xp.base == null) return false;
     } else {
       if(S.canCraft && e.s.locked) return false;
-      if(S.useBudget && S.affordable && e.cost != null && e.cost > S.budget) return false;
-      if(S.slots && S.hideSlow && e.sale.worth === false) return false;
+      if(S.mode === 'profit' && S.useBudget && S.affordable && e.cost != null && e.cost > S.budget) return false;
+      if(S.mode === 'profit' && S.slots && S.hideSlow && e.sale.worth === false) return false;
       if(S.needListings && !(e.base && e.base.kind !== 'last' && e.list > 0)) return false;
     }
-    if(S.mode === 'profit' && S.prof && e.r.prof !== S.prof) return false;
+    if(S.mode !== 'exp' && S.prof && e.r.prof !== S.prof) return false;
     if(q && !(e.name.toLowerCase().includes(q) || e.r.c.some(([k]) => item(k)[0].toLowerCase().includes(q)))) return false;
     return true;
   });
@@ -759,7 +774,7 @@ function render(room = 99, pre = null, stacked = false){  // room: optional colu
   const val = e => k === 'name' ? e.name : k === 'prof' ? e.r.prof + String(e.r.ml).padStart(3,'0') : k === 'p' ? e.s.p : k === 'list' ? e.list
     : k === 'n' ? (e.plan ? e.plan.n : null) : k === 'bad' ? (e.plan ? e.plan.bad : null)
     : k === 'xpa' ? e.xp.xpa : k === 'kxp' ? e.xp.kxp : k === 'tgt' ? (e.xp.tgt ? e.xp.tgt.crafts : null)
-    : k === 'sale' ? e.sale.per : k === 'ph' ? (e.sale.ph != null && isFinite(e.sale.hours) ? e.sale.ph : null) : k === 'speed' ? (e.sale.hours == null ? null : isFinite(e.sale.hours) ? e.sale.hours : 1e9) : e[k];
+    : k === 'one' ? costOfOne(e) : k === 'sale' ? e.sale.per : k === 'ph' ? (e.sale.ph != null && isFinite(e.sale.hours) ? e.sale.ph : null) : k === 'speed' ? (e.sale.hours == null ? null : isFinite(e.sale.hours) ? e.sale.hours : 1e9) : e[k];
   const vis = visibleCols(stacked ? 99 : room), cols = vis.length;
   $('#tbl').classList.toggle('stacked', stacked);
   $('#thead').innerHTML = '<tr>' + vis.map(c => `<th data-k="${c.k}"${c.num ? ' class="num"' : ''}${c.title ? ` title="${esc(c.title)}"` : ''} aria-sort="${c.k === k ? (dir < 0 ? 'descending' : 'ascending') : 'none'}">${c.label}</th>`).join('') + '</tr>';
@@ -773,8 +788,8 @@ function render(room = 99, pre = null, stacked = false){  // room: optional colu
   if(!rows.length){ body.innerHTML = `<tr><td colspan="${cols}" class="empty">No recipes match. Try clearing the search or loosening the filters.</td></tr>`; summary(rows); return }
   body.innerHTML = rows.map(e => {
     const g = item(e.r.p)[1] || 'Common';
-    const chips = (e.s.locked ? `<span class="chip lock">needs ${e.r.ml}</span>` : '') + (e.flags.includes('stale') ? '<span class="chip warn">last ask</span>' : '') + (e.flags.includes('upstale') ? '<span class="chip warn">upgrade: last ask</span>' : '') + (e.flags.includes('trashB') ? `<span class="chip risk" title="Not worth a sale slot, counted as trashed">${e.r.combo ? 'ordinary ones trashed' : 'not worth a slot'}</span>` : '') + (e.flags.includes('trashU') ? '<span class="chip risk" title="Not worth a sale slot, counted as trashed">upgrades trashed</span>' : '') + (e.base && e.base.kind === 'group' ? `<span class="chip" title="${esc(e.base.group.name)}">priced as ${esc(item(e.base.via)[0])}</span>` : '') + (e.missing.length ? '<span class="chip warn">price missing</span>' : '') + (e.s.p == null ? '<span class="chip warn">no success data</span>' : e.s.est ? '<span class="chip warn">est. success</span>' : '') + (e.r.ml === 0 ? '<span class="chip warn">unverified recipe</span>' : '')
-      + (S.slots && e.sale.worth === false ? `<span class="chip risk" title="Earns ${kina(e.sale.ph)} per slot-hour (${kina(e.sale.per)} per listing, sells in ${fmtHours(e.sale.hours)}); a slot-hour is worth ${kina(S.slotRate)}">not worth a slot</span>` : '')
+    const chips = (e.s.locked ? `<span class="chip lock">needs ${e.r.ml}</span>` : '') + (e.flags.includes('stale') ? '<span class="chip warn">last ask</span>' : '') + (e.flags.includes('upstale') ? '<span class="chip warn">upgrade: last ask</span>' : '') + (S.mode === 'profit' && e.flags.includes('trashB') ? `<span class="chip risk" title="Not worth a sale slot, counted as trashed">${e.r.combo ? 'ordinary ones trashed' : 'not worth a slot'}</span>` : '') + (S.mode === 'profit' && e.flags.includes('trashU') ? '<span class="chip risk" title="Not worth a sale slot, counted as trashed">upgrades trashed</span>' : '') + (S.mode === 'profit' && e.base && e.base.kind === 'group' ? `<span class="chip" title="${esc(e.base.group.name)}">priced as ${esc(item(e.base.via)[0])}</span>` : '') + (e.missing.length ? '<span class="chip warn">price missing</span>' : '') + (e.s.p == null ? '<span class="chip warn">no success data</span>' : e.s.est ? '<span class="chip warn">est. success</span>' : '') + (e.r.ml === 0 ? '<span class="chip warn">unverified recipe</span>' : '')
+      + (S.mode === 'profit' && S.slots && e.sale.worth === false ? `<span class="chip risk" title="Earns ${kina(e.sale.ph)} per slot-hour (${kina(e.sale.per)} per listing, sells in ${fmtHours(e.sale.hours)}); a slot-hour is worth ${kina(S.slotRate)}">not worth a slot</span>` : '')
       + (S.mode === 'exp' && e.xp.src === 'est' ? '<span class="chip warn" title="Estimated from recipe level and grade; open the recipe to enter the EXP you see in-game">est. EXP</span>' : '')
       + (S.mode === 'exp' && e.xp.src === 'yours' ? '<span class="chip">your EXP</span>' : '')
       + (S.mode === 'profit' && S.useBudget && S.riskRank && e.plan && e.ppa > 0 ? (e.plan.safe ? '<span class="chip good">safe bet</span>' : `<span class="chip risk" title="${e.plan.needKina ? 'About ' + kina(e.plan.needKina) + ' makes it safe' : ''}">risky for your Kina</span>`) : '');
@@ -798,10 +813,11 @@ function render(room = 99, pre = null, stacked = false){  // room: optional colu
       sale: () => `<td class="num ${tone(e.sale.per)}">${kina(e.sale.per)}</td>`,
       ph: () => `<td class="num ${e.sale.gear && e.sale.ph != null && isFinite(e.sale.hours) ? (e.sale.worth ? 'gain' : 'loss') : ''}">${e.sale.ph != null && isFinite(e.sale.hours) ? kina(e.sale.ph) : '–'}</td>`,
       speed: () => `<td class="num">${e.sale.hours == null ? '–' : !isFinite(e.sale.hours) ? '> 1 week' : e.sale.hours < 48 ? (e.sale.hours < 1 ? '<1 h' : Math.round(e.sale.hours) + ' h') : (e.sale.hours / 24).toFixed(1) + ' d'}</td>`,
+      one: () => `<td class="num">${kina(costOfOne(e))}</td>`,
       bad: () => `<td class="num ${tone(e.plan && e.plan.bad)}">${e.plan && e.plan.bad != null ? kina(e.plan.bad) : '–'}</td>`,
     };
     return `<tr class="rec${open ? ' open' : ''}${e.s.locked ? ' locked' : ''}" data-id="${e.r.id}" tabindex="0" aria-expanded="${open}">${vis.map(c => c.k === 'name' ? cell.name() : cell[c.k]().replace('<td', `<td data-label="${esc(c.label)}"`)).join('')}</tr>`
-      + (open ? `<tr class="sheet"><td colspan="${cols}">${sheet(e)}</td></tr>` : '');
+      + (open ? `<tr class="sheet"><td colspan="${cols}">${S.mode === 'single' ? singleSheet(e) : sheet(e)}</td></tr>` : '');
   }).join('');
   summary(rows);
   // never scroll sideways: on narrow screens switch to cards (all ticked columns); otherwise drop the
@@ -813,6 +829,7 @@ function render(room = 99, pre = null, stacked = false){  // room: optional colu
   }
 }
 function summary(rows){
+  if(S.mode === 'single'){ $('#summary').innerHTML = `<b>${rows.length}</b> recipe${rows.length === 1 ? '' : 's'} · open one to see what it takes to make`; return }
   if(S.mode === 'exp'){
     const m = S.mastery[S.xpProf] || 1, measured = rows.filter(e => e.xp.src !== 'est').length;
     const best = rows[0];
@@ -830,8 +847,12 @@ function summary(rows){
 // recipe at the top. Only top-level costs add up to the total; nested ones show what the crafted cost is made of.
 const FOLD = new Set();
 const fmtQty = q => q >= 100 ? Math.round(q).toLocaleString('en-US') : (+q.toFixed(q >= 10 ? 1 : 2)).toString();
-function treeRows(k, qty, depth, path, stack){
+function treeRows(k, qty, depth, path, stack, ctx){
   const u = unitCost(k, stack), nm = item(k), id = path + '/' + k;
+  // single mode: what you already own is used up in tree order and only the rest is bought or crafted
+  let need = qty;
+  if(ctx){ const key = String(k), left = ctx.alloc.has(key) ? ctx.alloc.get(key) : (+S.owned[key] || 0), use = Math.min(left, qty); ctx.alloc.set(key, left - use); need = qty - use
+    if(depth > 0 && use && u.pick) ctx.saved += use * u.pick.v }
   const chosen = S.src[k] || (S.sourcing === 'buy' ? 'buy' : 'cheapest');
   const how = u.pick ? u.pick.how : null;
   const own = `<input class="manual" type="number" min="0" step="1" placeholder="your price" value="${S.manual[k] ?? ''}" data-manual="${k}" aria-label="Your price for ${esc(nm[0])}">`;
@@ -843,23 +864,32 @@ function treeRows(k, qty, depth, path, stack){
   const open = how === 'craft' && depth < 6 && !stack.has(String(k));
   const folded = FOLD.has(id);
   const caret = open ? `<button type="button" class="fold" data-fold="${esc(id)}" aria-expanded="${!folded}" aria-label="${folded ? 'Show' : 'Hide'} what ${esc(nm[0])} is made of">${folded ? '▸' : '▾'}</button>` : '<span class="fold-sp"></span>';
-  const cost = u.pick ? qty * u.pick.v : null;
-  let html = `<tr class="tree d${Math.min(depth, 6)}"><td><span class="tname" style="padding-left:${depth * 14}px">${caret}<span><span class="qinline">${fmtQty(qty)} × </span><span class="g-${esc(nm[1] || 'Common')}">${esc(nm[0])}</span></span></span></td><td class="num q">${fmtQty(qty)}</td>
-    <td><div class="opts" role="group" aria-label="Buy or craft ${esc(nm[0])}">${buyOpt}${craftOpt}${chosen !== 'cheapest' && chosen !== S.sourcing ? '<button type="button" class="chip" data-src="' + k + '" data-v="">reset</button>' : ''}</div></td>
-    <td class="num${depth ? ' muted' : ''}">${cost == null ? '–' : kina(cost)}</td></tr>`;
+  let cost = u.pick ? need * u.pick.v : null;
+  const qtyCell = fmtQty(need) + (need < qty ? `<span class="sub">of ${fmtQty(qty)}</span>` : '');
+  const ownInput = `<input class="owned" type="number" min="0" step="1" value="${+S.owned[String(k)] || 0}" data-owned="${k}" aria-label="How many ${esc(nm[0])} you own">`;
+  const ownCell = ctx ? `<td class="num own">${ownInput}</td>` : '';
+  const ownInline = ctx ? `<label class="owninline">Owned${ownInput}</label>` : '';
+  let sub = '', note = '';
   if(open){
-    const c = u.craft, L = c.left, att = qty * c.att;
+    const c = u.craft, L = c.left, att = need * c.att;
     // leftovers named by kind, not by item: the row above already names it
     const up = c.r.combo ? item(c.r.combo.p)[0] : '', splendent = /Splendent/.test(up);
     const kind = !L ? '' : c.r.combo && String(L.k) === String(c.r.combo.p) ? (splendent ? 'Splendent' : 'upgrade') : (splendent ? 'non-Splendent' : 'ordinary');
-    const note = [`about ${fmtQty(att)} attempt${att === 1 ? '' : 's'}`]
+    note = [`about ${fmtQty(att)} attempt${att === 1 ? '' : 's'}`]
       .concat(!L ? [] : [`${kind} leftovers ${L.trashed ? 'trashed' : 'sold'}`])
-      .concat(c.free ? ['leftovers pay for it'] : []);
-    html += `<tr class="tnote"><td colspan="4"><span style="padding-left:${depth * 14 + 22}px">${note.join(' · ')}</span></td></tr>`;
-    if(!folded){
-      const st = new Set(stack); st.add(String(k));
-      html += c.r.c.map(([ck, cq]) => treeRows(ck, att * cq, depth + 1, id, st)).join('');
-    }
+      .concat(c.free ? ['leftovers pay for it'] : []).join(' · ');
+    const st = new Set(stack); st.add(String(k));
+    const saved0 = ctx ? ctx.saved : 0;
+    sub = c.r.c.map(([ck, cq]) => treeRows(ck, att * cq, depth + 1, id, st, ctx)).join('');
+    if(ctx && cost != null) cost -= ctx.saved - saved0;   // owned materials in this branch
+  }
+  if(ctx && depth === 0 && cost != null) ctx.sum += cost;
+  let html = `<tr class="tree d${Math.min(depth, 6)}"><td><span class="tname" style="--d:${depth}">${caret}<span><span class="qinline">${fmtQty(need)} × </span><span class="g-${esc(nm[1] || 'Common')}">${esc(nm[0])}</span>${ownInline}</span></span></td><td class="num q">${qtyCell}</td>
+    <td><div class="opts" role="group" aria-label="Buy or craft ${esc(nm[0])}">${buyOpt}${craftOpt}${chosen !== 'cheapest' && chosen !== S.sourcing ? '<button type="button" class="chip" data-src="' + k + '" data-v="">reset</button>' : ''}</div></td>
+    ${ownCell}<td class="num${depth ? ' muted' : ''}">${cost == null ? '–' : kina(cost)}</td></tr>`;
+  if(open){
+    html += `<tr class="tnote"><td colspan="${ctx ? 5 : 4}"><span class="tindent" style="--d:${depth}">${note}</span></td></tr>`;
+    if(!folded) html += sub;
   }
   return html;
 }
@@ -878,6 +908,19 @@ function expBlock(e){
       ${x.tgt ? `<dt>To ${masteryName(S.xpTarget)}</dt><dd>${x.tgt.crafts.toLocaleString('en-US')} attempts<span class="muted">${fmtQty(x.tgt.need)} EXP · ${x.tgt.kina == null ? '' : x.tgt.kina < 0 ? 'earns ' + kina(-x.tgt.kina) : 'costs ' + kina(x.tgt.kina)}</span></dd>` : ''}
     </dl>
     <div class="notes" style="margin-top:8px"><p>Seen a different number in-game? Enter the EXP of one normal success: ${own}${S.xpOwn[r.id] != null ? `<button type="button" class="chip" data-clearxp="${r.id}">× clear</button>` : ''}</p></div>`;
+}
+function singleSheet(e){
+  const r = e.r, s = e.s, A = s.p ? 1 / s.p : 1;   // expected attempts for one success
+  const ctx = {alloc: new Map(), sum: 0, saved: 0};
+  const lines = r.c.map(([k, q]) => treeRows(k, q * A, 0, String(r.id), new Set([String(r.p)]), ctx)).join('');
+  const fee = (r.fee || 0) * A, owns = Object.keys(S.owned).length > 0;
+  return `<div class="sheetin single"><div>
+    <h3>Materials for one ${esc(e.name)}${r.y > 1 ? ' (one craft makes ' + r.y + ')' : ''}</h3>
+    <p class="notes" style="margin:0 0 10px">${s.locked ? `<span class="loss">Needs ${esc(pl(r.prof))} Lv ${r.ml}; you're at ${S.mastery[r.prof] || 1}.</span> ` : ''}${s.p ? `${pct(s.p)} success, so about ${fmtQty(A)} attempt${A === 1 ? '' : 's'}.` : 'Success chance unknown: quantities are for one attempt.'}</p>
+    <div class="mtable"><table><thead><tr><th>Material</th><th class="num q">Qty</th><th>Buy or craft (each)</th><th class="num own">Owned</th><th class="num">Cost</th></tr></thead>
+    <tbody>${lines}<tr><td colspan="4"><b>Expected cost</b>${fee ? ' (incl. fees ' + kina(fee) + ')' : ''}${owns ? ' <button type="button" class="chip" data-clearowned>clear owned</button>' : ''}</td><td class="num"><b>${kina(ctx.sum + fee)}</b></td></tr></tbody></table></div>
+    ${e.missing.length ? `<div class="notes" style="margin-top:10px"><p class="loss">No price for ${e.missing.map(k => esc(item(k)[0])).join(', ')}. Enter one to complete the cost.</p></div>` : ''}
+  </div></div>`;
 }
 function sheet(e){
   const r = e.r, s = e.s, c = r.combo ? r.combo.pct/100 : 0;
@@ -965,7 +1008,7 @@ function xpOwnCount(){
 }
 function syncMode(){
   document.querySelectorAll('.want-btn').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === S.mode));
-  $('#focusProfit').hidden = S.mode !== 'profit';
+  $('#focusProfit').hidden = S.mode !== 'profit';  // Profit card only when crafting in bulk to sell
   $('#focusExp').hidden = S.mode !== 'exp';
   $('#prof').hidden = S.mode === 'exp';
   document.querySelectorAll('#xpStrategy button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === S.xpStrategy));
@@ -981,7 +1024,7 @@ function setMode(m){
   store.set(colsKey(), S.cols); store.set(sortKey(), S.sort);
   S.mode = m; store.set('mode', m);
   S.cols = store.get(colsKey(), DEF_COLS[m]);
-  S.sort = store.get(sortKey(), m === 'exp' ? (S.xpStrategy === 'fast' ? {k:'xpa', dir:-1} : {k:'kxp', dir:1}) : {k:'bad', dir:-1});
+  S.sort = store.get(sortKey(), defaultSort(m));
   S.open = null; syncMode(); render();
 }
 function feedbackForm(){
@@ -1003,7 +1046,7 @@ function feedbackForm(){
   });
 }
 function buildSettings(){
-  if(S.mode === 'exp'){ S.cols = store.get('colsExp', DEF_COLS.exp); S.sort = store.get('sortExp', S.xpStrategy === 'fast' ? {k:'xpa', dir:-1} : {k:'kxp', dir:1}) }
+  if(S.mode !== 'profit'){ S.cols = store.get(colsKey(), DEF_COLS[S.mode]); S.sort = store.get(sortKey(), defaultSort(S.mode)) }
   document.querySelectorAll('.want-btn').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
   document.querySelectorAll('#xpStrategy button').forEach(b => b.addEventListener('click', () => {
     S.xpStrategy = b.dataset.v; store.set('xpStrategy', S.xpStrategy);
@@ -1105,6 +1148,7 @@ function buildSettings(){
     if(fold){ const id = fold.dataset.fold; FOLD.has(id) ? FOLD.delete(id) : FOLD.add(id); render(); return }
     const cx = ev.target.closest('[data-clearxp]');
     if(cx){ delete S.xpOwn[cx.dataset.clearxp]; store.set('xpOwn', S.xpOwn); xpOwnCount(); render(); return }
+    if(ev.target.closest('[data-clearowned]')){ S.owned = {}; store.set('owned', S.owned); render(); return }
     const clr = ev.target.closest('[data-clear]');
     if(clr){ delete S.manual[clr.dataset.clear]; store.set('manual', S.manual); manualCount(); render(); return }
     const src = ev.target.closest('[data-src]');
@@ -1115,6 +1159,7 @@ function buildSettings(){
   });
   rowsEl.addEventListener('keydown', ev => { const tr = ev.target.closest('tr.rec'); if(tr && (ev.key === 'Enter' || ev.key === ' ')){ ev.preventDefault(); S.open = S.open === +tr.dataset.id ? null : +tr.dataset.id; render(); document.querySelector(`tr.rec[data-id="${tr.dataset.id}"]`)?.focus() } });
   rowsEl.addEventListener('change', ev => { const rid = ev.target.dataset.xp; if(rid){ const v = +ev.target.value; if(v > 0) S.xpOwn[rid] = v; else delete S.xpOwn[rid]; store.set('xpOwn', S.xpOwn); xpOwnCount(); render(); return } });
+  rowsEl.addEventListener('change', ev => { const k = ev.target.dataset.owned; if(k){ const v = Math.max(0, Math.round(+ev.target.value) || 0); if(v) S.owned[k] = v; else delete S.owned[k]; store.set('owned', S.owned); render() } });
   rowsEl.addEventListener('change', ev => { const k = ev.target.dataset.manual; if(k){ const v = +ev.target.value; if(v > 0) S.manual[k] = v; else delete S.manual[k]; store.set('manual', S.manual); manualCount(); render() } });
   $('#clearManual').addEventListener('click', () => { S.manual = {}; store.set('manual', S.manual); manualCount(); render() });
   manualCount();
