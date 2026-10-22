@@ -20,7 +20,8 @@ APP, SITE, DIST = ROOT / 'app', ROOT / 'site', ROOT / 'dist'
 API = 'https://aion2.exchange/api'
 SITE_URL = 'https://daevaforge.com'
 UA = {'User-Agent': 'DaevaForge/0.2 (+https://daevaforge.com; mawreez@daevaforge.com) hourly price snapshot'}
-GAP = 2.0          # seconds between servers in the hourly run
+GAP = 4.0          # seconds between servers in the hourly run (about 12 minutes for 106 servers)
+BUDGET = 20 * 60   # stop fetching after this; the rest keep their last published prices, so a slow hour still deploys
 SPEED_GAP = 0.5    # seconds between item requests in the daily sale-speed run
 
 # Two pages, one app: the address picks the mode (app/index.html reads location.pathname)
@@ -36,11 +37,11 @@ PAGES = {
 }
 
 
-def get(url, tries=5):
+def get(url, tries=5, timeout=60):
     import urllib.error, urllib.request
     for n in range(tries):
         try:
-            return json.loads(urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=60).read())
+            return json.loads(urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=timeout).read())
         except urllib.error.HTTPError as e:  # Aion2Market answers 503 now and then; back off and retry
             if e.code < 500 or n == tries - 1:
                 raise
@@ -107,8 +108,8 @@ def build():
     print(f'dist/ ready ({sum(f.stat().st_size for f in DIST.rglob("*") if f.is_file()) // 1024} KB)')
 
 
-def market(server_id, keys):
-    items = get(f'{API}/items?server={server_id}&limit=1000')['items']
+def market(server_id, keys, tries=5):
+    items = get(f'{API}/items?server={server_id}&limit=1000', tries=tries, timeout=30)['items']
     return [m for m in items if str(m['item_key']) in keys]
 
 
@@ -122,11 +123,13 @@ def prices():
     keys = set(json.load(open(APP / 'data.json', encoding='utf8'))['items'])
     out = DIST / 'prices'
     out.mkdir(parents=True, exist_ok=True)
-    done, kept = [], []
+    done, kept, start = [], [], time.time()
     for n, sid in enumerate([int(x) for x in sys.argv[2:]] or servers()):   # server ids on the command line: just those
         if n: time.sleep(GAP)
         try:
-            items = market(sid, keys)
+            if time.time() - start > BUDGET:
+                raise TimeoutError('out of time this hour')
+            items = market(sid, keys, tries=3)   # Aion2Market answers 503 when busy: give up quickly, keep the last copy
         except Exception as e:  # keep the last published copy so the server doesn't vanish for an hour
             print(f'{sid}: {e}')
             try:

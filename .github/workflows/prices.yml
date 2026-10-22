@@ -9,7 +9,7 @@ concurrency: deploy
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30  # 106 servers, spaced 2 s apart
+    timeout-minutes: 40  # 106 servers 4 s apart; hosting.py stops fetching after 20 min
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
