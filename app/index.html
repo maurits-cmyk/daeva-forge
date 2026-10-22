@@ -220,13 +220,12 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
    long names may wrap mid-word, so Cost always stays visible */
 @container mt (max-width:560px){
   .sheetin th,.sheetin td{padding:5px 4px}
-  .sheetin .q{display:none}
+  .sheetin .mtable .q,.sheetin .mtable .own{width:0;max-width:0;padding:0;border:0;font-size:0;overflow:hidden;white-space:nowrap}
   .qinline{display:inline;color:var(--muted);font-family:var(--f-num)}
-  .sheetin .own{display:none}
   .sheetin .tname{overflow-wrap:anywhere;padding-left:calc(var(--d,0) * 8px)}
   .sheetin .tindent{padding-left:calc(var(--d,0) * 8px + 18px)}  /* long names may wrap mid-word rather than push Cost off narrow screens */
   .owninline{display:flex;flex-direction:column;align-items:flex-start;gap:2px;margin-top:4px;font:600 10px/1.2 var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-  .sheetin tr.tree td:first-child{width:auto}
+  .mtable th:first-child,.mtable td:first-child{width:100%}  /* spare width goes to Material */
   .opt{padding:2px 5px;column-gap:6px}
 }
 @container mt (max-width:320px){
@@ -786,7 +785,16 @@ function colMenu(){
     + (HIDDEN_COLS ? `<span class="hint">${HIDDEN_COLS} ticked column${HIDDEN_COLS > 1 ? 's' : ''} hidden; widen the window to see ${HIDDEN_COLS > 1 ? 'them' : 'it'}.</span>` : '')
     + '<button type="button" class="chip" id="colReset">Back to the defaults</button>';
 }
-function render(room = 99, pre = null, stacked = false){  // room: optional columns to try; pre: rows already evaluated and sorted; stacked: card layout
+// Redraw the list. A change inside an open recipe (buy or craft, owned, a price) can re-sort it: keep that recipe's
+// row at the same height on screen, so the page follows it instead of it jumping out of view.
+function render(...args){
+  const row = () => S.open != null && document.querySelector(`tr.rec[data-id="${S.open}"]`);
+  const before = row(), top = before ? before.getBoundingClientRect().top : null;
+  renderRows(...args);
+  const after = row();
+  if(top != null && after) window.scrollBy(0, after.getBoundingClientRect().top - top);
+}
+function renderRows(room = 99, pre = null, stacked = false){  // room: optional columns to try; pre: rows already evaluated and sorted; stacked: card layout
   if(!pre) memo = new Map();
   const q = S.q.trim().toLowerCase();
   let rows = pre || RECIPES.map(evaluate).filter(e => {
@@ -857,8 +865,8 @@ function render(room = 99, pre = null, stacked = false){  // room: optional colu
   // lowest-priority column and redraw until the table fits
   const box = $('.tablebox'), tbl = $('#tbl');
   if(!stacked && tbl.scrollWidth > box.clientWidth + 1){
-    if(box.clientWidth < 560) return render(99, rows, true);
-    if(cols > 2) return render(cols - 2, rows);
+    if(box.clientWidth < 560) return renderRows(99, rows, true);
+    if(cols > 2) return renderRows(cols - 2, rows);
   }
 }
 function summary(rows){
