@@ -236,9 +236,9 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
 
 
 
-  <section class="settings foldcard" aria-label="General settings">
+  <section class="settings foldcard" aria-label="Settings">
     <details class="card" id="cardGeneral" open>
-      <summary class="card-title">General</summary>
+      <summary class="card-title">Settings</summary>
       <div class="card-body">
     <fieldset>
       <legend>Mastery level</legend>
@@ -269,7 +269,7 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
 
   <section class="settings foldcard focus" id="focusProfit" aria-label="Profit settings">
     <details class="card" id="cardProfit" open>
-      <summary class="card-title">Profit</summary>
+      <summary class="card-title">Profit settings</summary>
       <div class="card-body">
     <div class="stack">
     <fieldset>
@@ -296,12 +296,12 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
     <div class="stack">
     <fieldset>
       <legend>Selling</legend>
-      <div class="row"><label><input type="checkbox" id="slots" checked> Gear must earn its sale slot</label></div>
+      <div class="row"><label><input type="checkbox" id="slots" checked> Non-stacking items must earn their sale slot</label></div>
       <div class="mastery">
         <label for="slotRate">A slot-hour is worth</label><input type="text" id="slotRate" inputmode="decimal" autocomplete="off">
       </div>
-      <div class="row"><label><input type="checkbox" id="hideSlow" checked> Hide gear not worth a slot</label></div>
-      <span class="hint" id="slotHint">You have 10 sale slots and gear doesn't stack. Gear that earns less than this per hour listed gets trashed.</span>
+      <div class="row"><label><input type="checkbox" id="hideSlow" checked> Hide non-stacking items not worth a slot</label></div>
+      <span class="hint" id="slotHint">You have 10 sale slots, and gear doesn't stack. Non-stacking items that earn less than this per hour listed get trashed.</span>
       <div class="row"><label><input type="checkbox" id="groupPrice"> Sell at the cheapest item of its supply request group</label></div>
       <div class="row" style="padding-left:22px"><label><input type="checkbox" id="groupDragon"> Also for Dragon Lord gear</label></div>
       <span class="hint">Supply requests accept any item in a group, so buyers take the cheapest.</span>
