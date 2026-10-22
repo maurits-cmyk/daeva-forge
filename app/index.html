@@ -522,12 +522,29 @@ function successOf(r){
   return {p: tab.r[i], diff, locked: diff < 0, est};
 }
 let RECIPES = [], BY_OUT = {};
+// Morph: 1 Odyle of a tier becomes 1 of these materials of the same tier; never fails, no limit, and recipes accept the
+// Bound result (Aion2Market's method page, 2026-10-23). Radiant tier unconfirmed, so not listed yet.
+const MORPHS = {
+  'Odyle': ['Orichalcum Ore', 'Yggdrasil Log'],
+  'Fine Odyle': ['Fine Orichalcum Ore', 'Fine Yggdrasil Log', 'Fine Ruby Gemstone', 'Fine Sapphire Gemstone', 'Fine Diamond Gemstone'],
+  'Pure Odyle': ['Pure Orichalcum Ore', 'Pure Yggdrasil Log', 'Pure Ruby Gemstone', 'Pure Sapphire Gemstone', 'Pure Diamond Gemstone'],
+};
+let MORPH_FROM = {};  // material key -> Odyle key
+function indexMorphs(){
+  const keysOf = name => Object.keys(S.data.items).filter(k => item(k)[0] === name);
+  const best = name => keysOf(name).sort((a, b) => !!price(b) - !!price(a))[0];   // prefer the tradable (priced) one
+  MORPH_FROM = {};
+  for(const [odyle, outs] of Object.entries(MORPHS)){
+    const src = best(odyle); if(!src) continue;
+    for(const out of outs) for(const k of keysOf(out)) MORPH_FROM[k] = src;
+  }
+}
 const QUEST_TOOL = /^(Novice|Professional) .+ \(Bound\)$/;  // profession tools made once for a quest
 function indexRecipes(){
   // level 0 = transfer crafting (always succeeds, bound gear, materials shown in-game): not worth listing
   RECIPES = S.data.recipes.filter(r => r.race === race() && r.ml > 0 && !QUEST_TOOL.test(item(r.p)[0]));
   FALLBACK = S.data.recipes.filter(r => r.ml > 0 && tableOf(r)).map(r => ({ml:r.ml, prof:r.prof, tab:tableOf(r)}));
-  indexGroups();
+  indexGroups(); indexMorphs();
   BY_OUT = {};
   for(const r of RECIPES){
     (BY_OUT[r.p] ||= []).push({r, as:'base'});
@@ -547,13 +564,17 @@ function unitCost(k, stack){
     }
     stack.delete(k);
   }
+  let morph = null;
+  const from = MORPH_FROM[k];
+  if(from && !stack.has(from)){
+    stack.add(k); const o = unitCost(from, stack).pick; stack.delete(k);
+    if(o && isFinite(o.v)) morph = {v:o.v, from};
+  }
   const pref = S.src[k] || (S.sourcing === 'buy' ? 'buy' : 'cheapest');
-  let pick = null;
-  if(pref === 'buy') pick = buy ? {v:buy.v, how:'buy'} : craft ? {v:craft.v, how:'craft', r:craft.r} : null;
-  else if(pref === 'craft') pick = craft ? {v:craft.v, how:'craft', r:craft.r} : buy ? {v:buy.v, how:'buy'} : null;
-  else if(buy && craft) pick = craft.v < buy.v ? {v:craft.v, how:'craft', r:craft.r} : {v:buy.v, how:'buy'};
-  else pick = buy ? {v:buy.v, how:'buy'} : craft ? {v:craft.v, how:'craft', r:craft.r} : null;
-  const res = {pick, buy, craft};
+  const ways = {buy: buy && {v:buy.v, how:'buy'}, craft: craft && {v:craft.v, how:'craft', r:craft.r}, morph: morph && {v:morph.v, how:'morph', from}};
+  // the chosen way if it's available, otherwise the cheapest one there is
+  const pick = ways[pref] || Object.values(ways).filter(Boolean).sort((a, b) => a.v - b.v)[0] || null;
+  const res = {pick, buy, craft, morph};
   if(stack.size === 0) memo.set(k, res);
   return res;
 }
@@ -902,6 +923,7 @@ function treeRows(k, qty, depth, path, stack, ctx){
     : u.buy.kind === 'manual' ? `<span class="opt-own">${own}<button type="button" class="chip" data-clear="${k}" aria-label="Clear your price for ${esc(nm[0])}">× clear</button></span>`
     : `<button type="button" class="opt" data-src="${k}" data-v="buy" aria-pressed="${how === 'buy'}"><span>Buy</span><b>${kina(u.buy.v)}</b><span class="sub">${buyLabel}</span></button>`;
   const craftOpt = u.craft ? `<button type="button" class="opt" data-src="${k}" data-v="craft" aria-pressed="${how === 'craft'}"><span>Craft</span><b>${u.craft.free ? 'free' : kina(u.craft.v)}</b><span class="sub">${esc(pl(u.craft.r.prof))} Lv ${u.craft.r.ml}</span></button>` : '';
+  const morphOpt = u.morph ? `<button type="button" class="opt" data-src="${k}" data-v="morph" aria-pressed="${how === 'morph'}"><span>Morph</span><b>${kina(u.morph.v)}</b><span class="sub">from ${esc(item(u.morph.from)[0])}</span></button>` : '';
   const open = how === 'craft' && depth < 6 && !stack.has(String(k));
   const folded = FOLD.has(id);
   const caret = open ? `<button type="button" class="fold" data-fold="${esc(id)}" aria-expanded="${!folded}" aria-label="${folded ? 'Show' : 'Hide'} what ${esc(nm[0])} is made of">${folded ? '▸' : '▾'}</button>` : '<span class="fold-sp"></span>';
@@ -926,7 +948,7 @@ function treeRows(k, qty, depth, path, stack, ctx){
   }
   if(ctx && depth === 0 && cost != null) ctx.sum += cost;
   let html = `<tr class="tree d${Math.min(depth, 6)}"><td><span class="tname" style="--d:${depth}">${caret}<span><span class="qinline">${fmtQty(need)} × </span><span class="g-${esc(nm[1] || 'Common')}">${esc(nm[0])}</span>${ownInline}</span></span></td><td class="num q">${qtyCell}</td>
-    <td><div class="opts" role="group" aria-label="Buy or craft ${esc(nm[0])}">${buyOpt}${craftOpt}${chosen !== 'cheapest' && chosen !== S.sourcing ? '<button type="button" class="chip" data-src="' + k + '" data-v="">reset</button>' : ''}</div></td>
+    <td><div class="opts" role="group" aria-label="Buy, craft or morph ${esc(nm[0])}">${buyOpt}${craftOpt}${morphOpt}${chosen !== 'cheapest' && chosen !== S.sourcing ? '<button type="button" class="chip" data-src="' + k + '" data-v="">reset</button>' : ''}</div></td>
     ${ownCell}<td class="num${depth ? ' muted' : ''}">${cost == null ? '–' : kina(cost)}</td></tr>`;
   if(open){
     html += `<tr class="tnote"><td colspan="${ctx ? 5 : 4}"><span class="tindent" style="--d:${depth}">${note}</span></td></tr>`;
