@@ -155,7 +155,7 @@ tr.sheet>td{background:rgba(5,6,9,.55);padding:0;border-bottom:1px solid var(--a
 /* section headers inside a recipe: the game's grey title bar with centred small caps */
 .sheetin h3{font:600 11.5px/1 var(--f-body);letter-spacing:.12em;text-transform:uppercase;color:var(--ink);text-align:center;background:var(--bar);border:1px solid var(--line);border-radius:2px;padding:7px 10px;margin:0 0 8px}
 .sheetin table{min-width:0;background:var(--panel)}
-.mtable{border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.mtable{border:1px solid var(--line);border-radius:3px;overflow:hidden;container:mt / inline-size}
 .sheetin tr.tree td{padding-block:6px}
 .sheetin tr.tree td:first-child{width:45%}
 .sheetin tr.tnote td span{display:block}
@@ -214,6 +214,11 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
   th,td{padding:7px 6px}
   .sheetin{padding:10px 0;gap:14px}
   .sheetin h3{margin-inline:6px}
+  .kv{padding:8px}
+}
+/* a cramped materials table (a phone, or beside Outcome in profit mode): quantity in front of the name, Owned under it,
+   long names may wrap mid-word, so Cost always stays visible */
+@container mt (max-width:560px){
   .sheetin th,.sheetin td{padding:5px 4px}
   .sheetin .q{display:none}
   .qinline{display:inline;color:var(--muted);font-family:var(--f-num)}
@@ -223,7 +228,12 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
   .owninline{display:flex;flex-direction:column;align-items:flex-start;gap:2px;margin-top:4px;font:600 10px/1.2 var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
   .sheetin tr.tree td:first-child{width:auto}
   .opt{padding:2px 5px;column-gap:6px}
-  .kv{padding:8px}
+}
+@container mt (max-width:320px){
+  .sheetin .tname{padding-left:calc(var(--d,0) * 5px)}
+  .sheetin .tindent{padding-left:calc(var(--d,0) * 5px + 16px)}
+  .owninline input.owned{width:40px}
+  .opt{padding:2px 4px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
