@@ -36,6 +36,19 @@ h1 small{display:block;font:500 11px/1.4 var(--f-body);letter-spacing:.14em;text
 .dot{width:7px;height:7px;border-radius:50%;background:currentColor;box-shadow:0 0 6px currentColor}
 .settings{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:14px 16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 28px}
 @media (max-width:620px){.settings{grid-template-columns:minmax(0,1fr)}}
+/* foldable cards: the title bar opens and closes the card, with a short height animation where supported */
+:root{interpolate-size:allow-keywords}
+.settings.foldcard{display:block;padding-block:0}
+.foldcard>details>summary{list-style:none;cursor:pointer;margin:0 -16px;border-radius:4px;transition:border-radius .22s}
+.foldcard>details>summary::-webkit-details-marker{display:none}
+.foldcard>details>summary::after{content:"▾";margin-left:auto;color:var(--muted);font-size:12px;transition:transform .22s ease}
+.foldcard>details:not([open])>summary::after{transform:rotate(-90deg)}
+.foldcard>details[open]>summary{border-radius:4px 4px 0 0}
+.foldcard>details>summary:hover{color:#fff}
+.foldcard>details::details-content{block-size:0;overflow:hidden;transition:block-size .22s ease,content-visibility .22s allow-discrete}
+.foldcard>details[open]::details-content{block-size:auto}
+.card-body{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 28px;padding:14px 0}
+@media (max-width:620px){.card-body{grid-template-columns:minmax(0,1fr)}}
 .card-title{grid-column:1/-1;font:600 12px/1 var(--f-body);letter-spacing:.14em;text-transform:uppercase;color:var(--ink);margin:0 -16px 2px;padding:9px 16px;background:var(--bar);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
 .card-title::before{content:"✦";color:var(--cyan);font-size:11px}
 .settings>.card-title:first-child{margin-top:-14px;border-radius:4px 4px 0 0}
@@ -45,18 +58,16 @@ h1 small{display:block;font:500 11px/1.4 var(--f-body);letter-spacing:.14em;text
 .want-title .orn i{font-style:normal}.want-title .orn .s{font-size:8px}.want-title .orn .m{font-size:11px}.want-title .orn .l{font-size:15px}
 .want-btns{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line)}
 .want-btn{font:600 13px/1.2 var(--f-body);letter-spacing:.16em;text-transform:uppercase;padding:16px 12px;border:0;border-radius:0;background:var(--panel-2);color:var(--muted);cursor:pointer;position:relative;transition:background .12s,color .12s}
+.seg button,th,button.chip,.btn,.opt,.support-btn,.fold,.want-btn{transition:color .18s ease,background .18s ease,border-color .18s ease,box-shadow .18s ease,filter .18s ease}
 .want-btn+.want-btn{border-left:1px solid var(--line)}
 .want-btn:hover{color:var(--ink)}
 .want-btn[aria-pressed="true"]{color:#fff;background:linear-gradient(180deg,rgba(118,150,190,.16),rgba(118,150,190,.03))}
-.want-btn[aria-pressed="true"]::after{content:"";position:absolute;left:12%;right:12%;bottom:0;height:2px;background:linear-gradient(90deg,transparent,#dff1ff,transparent);box-shadow:0 0 10px var(--glow)}
+.want-btn::after{content:"";position:absolute;left:12%;right:12%;bottom:0;height:2px;opacity:0;transition:opacity .2s ease;background:linear-gradient(90deg,transparent,#dff1ff,transparent);box-shadow:0 0 10px var(--glow)}
+.want-btn[aria-pressed="true"]::after{opacity:1;content:"";position:absolute;left:12%;right:12%;bottom:0;height:2px;background:linear-gradient(90deg,transparent,#dff1ff,transparent);box-shadow:0 0 10px var(--glow)}
 .mtable input.owned{width:64px;text-align:right}
 .owninline{display:none}
 .owninline input.owned{width:46px;padding:2px 5px;margin:0;font:400 13px var(--f-num);letter-spacing:0}
 .sheetin.single{grid-template-columns:minmax(0,1fr)}
-.adv{display:block;padding-block:0}
-.adv summary{cursor:pointer;list-style-position:inside;margin:0 -16px;border-radius:4px}
-.adv details[open] summary{border-radius:4px 4px 0 0}
-.adv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px 22px;margin-top:12px;padding-bottom:14px}
 .stack{display:flex;flex-direction:column;gap:18px;min-width:0}
 fieldset{border:0;margin:0;padding:0;min-width:0;display:flex;flex-direction:column;gap:8px}
 legend{font:600 11px/1 var(--f-body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:0 0 6px;margin-bottom:8px;border-bottom:1px solid var(--line);width:100%}
@@ -89,7 +100,8 @@ input:focus-visible,select:focus-visible,button:focus-visible,tr:focus-visible,s
 .seg button{font:inherit;font-size:12.5px;border:0;background:transparent;color:var(--muted);padding:6px 10px;cursor:pointer;position:relative}
 .seg button:hover{color:var(--ink)}
 .seg button[aria-pressed="true"]{color:#fff;font-weight:600}
-.seg button[aria-pressed="true"]::after{content:"";position:absolute;left:8%;right:8%;bottom:-1px;height:2px;background:linear-gradient(90deg,transparent,#dff1ff,transparent);box-shadow:0 0 10px var(--glow)}
+.seg button::after{content:"";position:absolute;left:8%;right:8%;bottom:-1px;height:2px;opacity:0;transition:opacity .2s ease;background:linear-gradient(90deg,transparent,#dff1ff,transparent);box-shadow:0 0 10px var(--glow)}
+.seg button[aria-pressed="true"]::after{opacity:1;content:"";position:absolute;left:8%;right:8%;bottom:-1px;height:2px;background:linear-gradient(90deg,transparent,#dff1ff,transparent);box-shadow:0 0 10px var(--glow)}
 .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
 .toolbar .row{flex:1 1 auto}
 .toolbar input[type=search]{max-width:280px}
@@ -224,8 +236,10 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
 
 
 
-  <section class="settings" aria-label="General settings">
-    <h2 class="card-title">General</h2>
+  <section class="settings foldcard" aria-label="General settings">
+    <details class="card" id="cardGeneral" open>
+      <summary class="card-title">General</summary>
+      <div class="card-body">
     <fieldset>
       <legend>Mastery level</legend>
       <div class="mastery" id="mastery"></div>
@@ -241,6 +255,8 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
       <span class="hint">10% sales tax + 2% listing fee.</span>
     </fieldset>
     </div>
+      </div>
+    </details>
   </section>
 
   <section class="want" aria-label="What you want to craft">
@@ -251,8 +267,10 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
     </div>
   </section>
 
-  <section class="settings focus" id="focusProfit" aria-label="Profit settings">
-    <h2 class="card-title">Profit</h2>
+  <section class="settings foldcard focus" id="focusProfit" aria-label="Profit settings">
+    <details class="card" id="cardProfit" open>
+      <summary class="card-title">Profit</summary>
+      <div class="card-body">
     <div class="stack">
     <fieldset>
       <legend>Your Kina</legend>
@@ -294,6 +312,8 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
       <div class="row"><label><input type="checkbox" id="needListings"> Only items with sellers on the market</label></div>
     </fieldset>
     </div>
+      </div>
+    </details>
   </section>
 
   <section class="settings focus" id="focusExp" aria-label="Experience settings" hidden>
@@ -323,17 +343,6 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
     </fieldset>
   </section>
 
-  <section class="settings adv" aria-label="Advanced settings">
-    <details id="advanced">
-      <summary class="card-title">Advanced</summary>
-      <div class="adv-grid">
-        <fieldset>
-          <legend>Recipes</legend>
-          <div class="row"><label><input type="checkbox" id="unverified"> Level-0 recipes (incomplete in the game data)</label></div>
-        </fieldset>
-      </div>
-    </details>
-  </section>
 
   <div class="toolbar">
     <div class="row">
@@ -417,7 +426,7 @@ const S = {
   mode: modeFromPath(), xpStrategy: store.get('xpStrategy', 'cheap'), xpSell: store.get('xpSell', true),
   xpProf: store.get('xpProf', 'Blacksmithing'), xpTarget: store.get('xpTarget', null), xpOwn: store.get('xpOwn', {}),
   cols: store.get('cols', ['ppa', 'bad']),
-  canCraft: store.get('canCraft', false), needListings: store.get('needListings', false), unverified: store.get('unverified', false),
+  canCraft: store.get('canCraft', false), needListings: store.get('needListings', false),
   q:'', prof: store.get('prof',''), sort: store.get('sort', {k:'ppa', dir:-1}),
   src: store.get('src', {}), manual: store.get('manual', {}), owned: store.get('owned', {}), open: null
 };
@@ -506,7 +515,8 @@ function successOf(r){
 let RECIPES = [], BY_OUT = {};
 const QUEST_TOOL = /^(Novice|Professional) .+ \(Bound\)$/;  // profession tools made once for a quest
 function indexRecipes(){
-  RECIPES = S.data.recipes.filter(r => r.race === race() && (S.unverified || r.ml > 0) && !QUEST_TOOL.test(item(r.p)[0]));
+  // level 0 = transfer crafting (always succeeds, bound gear, materials shown in-game): not worth listing
+  RECIPES = S.data.recipes.filter(r => r.race === race() && r.ml > 0 && !QUEST_TOOL.test(item(r.p)[0]));
   FALLBACK = S.data.recipes.filter(r => r.ml > 0 && tableOf(r)).map(r => ({ml:r.ml, prof:r.prof, tab:tableOf(r)}));
   indexGroups();
   BY_OUT = {};
@@ -745,8 +755,9 @@ const COLS = [
 // Only as many optional columns as the window has room for (no sideways scrolling), headline figures first
 const PRIORITY_BY_MODE = {profit: ['ppa', 'bad'], single: ['one'], exp: ['kxp', 'xpa', 'tgt']};
 const DEF_COLS = {profit: ['ppa', 'bad'], single: ['one'], exp: ['xpa', 'kxp', 'tgt']};
-const colsKey = () => ({exp: 'colsExp', single: 'colsSingle'})[S.mode] || 'cols', sortKey = () => ({exp: 'sortExp', single: 'sortSingleLevel'})[S.mode] || 'sort';
-const defaultSort = m => m === 'exp' ? (S.xpStrategy === 'fast' ? {k:'xpa', dir:-1} : {k:'kxp', dir:1}) : m === 'single' ? {k:'ml', dir:-1} : {k:'bad', dir:-1};
+const colsKey = () => ({exp: 'colsExp', single: 'colsSingle'})[S.mode] || 'cols', sortKey = () => ({exp: 'sortExp', single: 'sortSingleGrade'})[S.mode] || 'sort';
+const defaultSort = m => m === 'exp' ? (S.xpStrategy === 'fast' ? {k:'xpa', dir:-1} : {k:'kxp', dir:1}) : m === 'single' ? {k:'gr', dir:-1} : {k:'bad', dir:-1};
+const GRADE_RANK = {Common: 0, Rare: 1, Legend: 2, Epic: 3, Unique: 4};
 const showCol = c => (!c.exp || S.mode === 'exp') && (!c.single || S.mode === 'single') && (!c.plan || S.mode === 'profit');
 const costOfOne = e => e.cost != null && e.s.p ? e.cost / (e.s.p * e.r.y) : null;
 let HIDDEN_COLS = 0;
@@ -783,7 +794,7 @@ function render(room = 99, pre = null, stacked = false){  // room: optional colu
     return true;
   });
   const {k, dir} = S.sort;
-  const val = e => k === 'ml' ? e.r.ml : k === 'name' ? e.name : k === 'prof' ? e.r.prof + String(e.r.ml).padStart(3,'0') : k === 'p' ? e.s.p : k === 'list' ? e.list
+  const val = e => k === 'gr' ? (GRADE_RANK[item(e.r.p)[1]] ?? 0) * 1000 + e.r.ml : k === 'ml' ? e.r.ml : k === 'name' ? e.name : k === 'prof' ? e.r.prof + String(e.r.ml).padStart(3,'0') : k === 'p' ? e.s.p : k === 'list' ? e.list
     : k === 'n' ? (e.plan ? e.plan.n : null) : k === 'bad' ? (e.plan ? e.plan.bad : null)
     : k === 'xpa' ? e.xp.xpa : k === 'kxp' ? e.xp.kxp : k === 'tgt' ? (e.xp.tgt ? e.xp.tgt.crafts : null)
     : k === 'one' ? costOfOne(e) : k === 'sale' ? e.sale.per : k === 'ph' ? (e.sale.ph != null && isFinite(e.sale.hours) ? e.sale.ph : null) : k === 'speed' ? (e.sale.hours == null ? null : isFinite(e.sale.hours) ? e.sale.hours : 1e9) : e[k];
@@ -800,7 +811,7 @@ function render(room = 99, pre = null, stacked = false){  // room: optional colu
   if(!rows.length){ body.innerHTML = `<tr><td colspan="${cols}" class="empty">No recipes match. Try clearing the search or loosening the filters.</td></tr>`; summary(rows); return }
   body.innerHTML = rows.map(e => {
     const g = item(e.r.p)[1] || 'Common';
-    const chips = (e.s.locked && S.mode !== 'single' ? `<span class="chip lock">needs ${e.r.ml}</span>` : '') + (e.flags.includes('stale') ? '<span class="chip warn">last ask</span>' : '') + (e.flags.includes('upstale') ? '<span class="chip warn">upgrade: last ask</span>' : '') + (S.mode === 'profit' && e.flags.includes('trashB') ? `<span class="chip risk" title="Not worth a sale slot, counted as trashed">${e.r.combo ? 'ordinary ones trashed' : 'not worth a slot'}</span>` : '') + (S.mode === 'profit' && e.flags.includes('trashU') ? '<span class="chip risk" title="Not worth a sale slot, counted as trashed">upgrades trashed</span>' : '') + (S.mode === 'profit' && e.base && e.base.kind === 'group' ? `<span class="chip" title="${esc(e.base.group.name)}">priced as ${esc(item(e.base.via)[0])}</span>` : '') + (e.missing.length ? '<span class="chip warn">price missing</span>' : '') + (e.s.p == null ? '<span class="chip warn">no success data</span>' : e.s.est ? '<span class="chip warn">est. success</span>' : '') + (e.r.ml === 0 ? '<span class="chip warn">unverified recipe</span>' : '')
+    const chips = (e.s.locked && S.mode !== 'single' ? `<span class="chip lock">needs ${e.r.ml}</span>` : '') + (e.flags.includes('stale') ? '<span class="chip warn">last ask</span>' : '') + (e.flags.includes('upstale') ? '<span class="chip warn">upgrade: last ask</span>' : '') + (S.mode === 'profit' && e.flags.includes('trashB') ? `<span class="chip risk" title="Not worth a sale slot, counted as trashed">${e.r.combo ? 'ordinary ones trashed' : 'not worth a slot'}</span>` : '') + (S.mode === 'profit' && e.flags.includes('trashU') ? '<span class="chip risk" title="Not worth a sale slot, counted as trashed">upgrades trashed</span>' : '') + (S.mode === 'profit' && e.base && e.base.kind === 'group' ? `<span class="chip" title="${esc(e.base.group.name)}">priced as ${esc(item(e.base.via)[0])}</span>` : '') + (e.missing.length ? '<span class="chip warn">price missing</span>' : '') + (e.s.p == null ? '<span class="chip warn">no success data</span>' : e.s.est ? '<span class="chip warn">est. success</span>' : '')
       + (S.mode === 'profit' && S.slots && e.sale.worth === false ? `<span class="chip risk" title="Earns ${kina(e.sale.ph)} per slot-hour (${kina(e.sale.per)} per listing, sells in ${fmtHours(e.sale.hours)}); a slot-hour is worth ${kina(S.slotRate)}">not worth a slot</span>` : '')
       + (S.mode === 'exp' && e.xp.src === 'est' ? '<span class="chip warn" title="Estimated from recipe level and grade; open the recipe to enter the EXP you see in-game">est. EXP</span>' : '')
       + (S.mode === 'exp' && e.xp.src === 'yours' ? '<span class="chip">your EXP</span>' : '')
@@ -1042,6 +1053,13 @@ function setMode(m){
   S.sort = store.get(sortKey(), defaultSort(m));
   S.open = null; syncMode(); render();
 }
+function foldCards(){
+  // remember which cards are folded
+  document.querySelectorAll('details.card').forEach(d => {
+    d.open = !store.get('folded:' + d.id, false);
+    d.addEventListener('toggle', () => store.set('folded:' + d.id, !d.open));
+  });
+}
 function feedbackForm(){
   const card = $('#feedback'), btn = $('#fbSend'), st = $('#fbStatus');
   card.hidden = !S.hosted;  // only the hosted site can send mail
@@ -1131,9 +1149,9 @@ function buildSettings(){
     $('#' + id).checked = S[id];
     $('#' + id).addEventListener('change', ev => { S[id] = ev.target.checked; store.set(id, S[id]); syncBudgetUI(); render() });
   }
-  for(const id of ['credit','canCraft','needListings','unverified','groupPrice','groupDragon']){
+  for(const id of ['credit','canCraft','needListings','groupPrice','groupDragon']){
     $('#' + id).checked = S[id];
-    $('#' + id).addEventListener('change', ev => { S[id] = ev.target.checked; store.set(id, S[id]); if(id === 'unverified') indexRecipes(); render() });
+    $('#' + id).addEventListener('change', ev => { S[id] = ev.target.checked; store.set(id, S[id]); render() });
   }
   document.querySelectorAll('#sourcing button').forEach(b => {
     b.setAttribute('aria-pressed', b.dataset.v === S.sourcing);
@@ -1247,7 +1265,7 @@ async function boot(){
   S.fetchedAt = S.data.built;
   if(!LIVE){ try{ const r = await fetch('prices/index.json', {cache:'no-cache'}); if(r.ok) S.hosted = await r.json() }catch(e){} }
   setInterval(statusBar, 6e4);  // keep "updated X min ago" current
-  buildSettings(); indexRecipes(); serverPicker(); statusBar(); render(); feedbackForm();
+  buildSettings(); foldCards(); indexRecipes(); serverPicker(); statusBar(); render(); feedbackForm();
   if(LIVE) loadLive(store.get('server', S.server.id));
   else if(S.hosted && S.hosted.servers.length){ const want = store.get('server', S.server.id); loadHosted(S.hosted.servers.includes(want) ? want : S.hosted.servers[0]) }
 }
