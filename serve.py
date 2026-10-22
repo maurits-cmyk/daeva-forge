@@ -92,7 +92,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         url = urllib.parse.urlsplit(self.path)
-        if url.path in ('/', '/index.html'):
+        if url.path in ('/', '/index.html', '/profit', '/profit/'):  # one page, two modes (the page reads the path)
             # index.html is written as a page body (no doctype/head); wrap it like the publisher does
             page = (APP / 'index.html').read_text(encoding='utf8')
             return self._send(200, wrap_page('<script>window.FORGE_LOCAL = true</script>' + page), 'text/html; charset=utf-8')
