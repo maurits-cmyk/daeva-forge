@@ -1,4 +1,4 @@
-<title>Daeva Forge Beta · AION 2 crafting for profit (unofficial fan site)</title>
+<title>AION 2 Crafting Calculator with Market Prices – Daeva Forge (unofficial)</title>
 <link rel="icon" href="favicon.ico" sizes="32x32"><link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -218,7 +218,7 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
 
 <div class="wrap">
   <header>
-    <h1><svg class="emblem" viewBox="0 0 40 40" aria-hidden="true"><defs><radialGradient id="eg" cx="50%" cy="45%" r="55%"><stop offset="0" stop-color="#2b3340"/><stop offset="1" stop-color="#0d1015"/></radialGradient></defs><circle cx="20" cy="20" r="18.5" fill="url(#eg)" stroke="#5fd6e8" stroke-opacity=".55"/><circle cx="20" cy="20" r="15" fill="none" stroke="#fff" stroke-opacity=".12"/><path d="M11 18h14l2-3h3l-2 5h-3l-1 2h-4l2 5h4v2H13v-2h4l2-5h-3c-3 0-5-2-5-4z" fill="#e7eaee"/><path d="M30 9l.9 2.1L33 12l-2.1.9L30 15l-.9-2.1L27 12l2.1-.9z" fill="#5fd6e8"/></svg><span>Daeva Forge <span class="beta">Beta</span><small>AION 2 crafting for profit</small></span></h1>
+    <h1><svg class="emblem" viewBox="0 0 40 40" aria-hidden="true"><defs><radialGradient id="eg" cx="50%" cy="45%" r="55%"><stop offset="0" stop-color="#2b3340"/><stop offset="1" stop-color="#0d1015"/></radialGradient></defs><circle cx="20" cy="20" r="18.5" fill="url(#eg)" stroke="#5fd6e8" stroke-opacity=".55"/><circle cx="20" cy="20" r="15" fill="none" stroke="#fff" stroke-opacity=".12"/><path d="M11 18h14l2-3h3l-2 5h-3l-1 2h-4l2 5h4v2H13v-2h4l2-5h-3c-3 0-5-2-5-4z" fill="#e7eaee"/><path d="M30 9l.9 2.1L33 12l-2.1.9L30 15l-.9-2.1L27 12l2.1-.9z" fill="#5fd6e8"/></svg><span>Daeva Forge <span class="beta">Beta</span><small id="tagline">AION 2 crafting calculator</small></span></h1>
     <span class="pill unofficial" title="Not affiliated with NCSOFT">Unofficial fan site</span><div class="status" id="status"><span class="pill">Loading recipes and prices…</span></div><div class="support"><a class="support-btn" href="https://ko-fi.com/daevaforge" target="_blank" rel="noopener" title="Opens our Ko-fi page"><span class="heart" aria-hidden="true">♥</span>Support Us</a></div>
   </header>
 
@@ -412,8 +412,9 @@ const S = {
   useBudget: store.get('useBudget', true), budget: store.get('budget', 25e6), affordable: store.get('affordable', false),
   riskRank: store.get('riskRank', true), pwin: store.get('pwin', 90),
   slots: store.get('slots', true), slotRate: store.get('slotRate', 100000), hideSlow: store.get('hideSlow', true),
-  // 'single' (default): specific items for yourself, mostly gear upgrades; 'profit': crafting in bulk to sell. Experience mode ('exp') is shelved
-  mode: ['profit', 'single'].includes(store.get('mode', 'single')) ? store.get('mode', 'single') : 'single', xpStrategy: store.get('xpStrategy', 'cheap'), xpSell: store.get('xpSell', true),
+  // 'single' (daevaforge.com/): specific items for yourself, mostly gear upgrades; 'profit' (/profit): crafting in bulk
+  // to sell. The address picks the mode, so shared links open the right one. Experience mode ('exp') is shelved
+  mode: modeFromPath(), xpStrategy: store.get('xpStrategy', 'cheap'), xpSell: store.get('xpSell', true),
   xpProf: store.get('xpProf', 'Blacksmithing'), xpTarget: store.get('xpTarget', null), xpOwn: store.get('xpOwn', {}),
   cols: store.get('cols', ['ppa', 'bad']),
   canCraft: store.get('canCraft', false), needListings: store.get('needListings', false), unverified: store.get('unverified', false),
@@ -421,6 +422,11 @@ const S = {
   src: store.get('src', {}), manual: store.get('manual', {}), owned: store.get('owned', {}), open: null
 };
 const $ = s => document.querySelector(s);
+function modeFromPath(){ return /^\/profit(\.html)?\/?$/.test(location.pathname) ? 'profit' : 'single' }
+const MODE_PAGE = {
+  single: {path: '/', tagline: 'AION 2 crafting calculator', title: 'AION 2 Crafting Calculator with Market Prices – Daeva Forge (unofficial)'},
+  profit: {path: '/profit', tagline: 'AION 2 crafting for profit', title: 'AION 2 Crafting for Profit: Best Recipes per Server – Daeva Forge (unofficial)'},
+};
 
 /* ---------- formatting ---------- */
 function kina(v){
@@ -498,8 +504,9 @@ function successOf(r){
   return {p: tab.r[i], diff, locked: diff < 0, est};
 }
 let RECIPES = [], BY_OUT = {};
+const QUEST_TOOL = /^(Novice|Professional) .+ \(Bound\)$/;  // profession tools made once for a quest
 function indexRecipes(){
-  RECIPES = S.data.recipes.filter(r => r.race === race() && (S.unverified || r.ml > 0));
+  RECIPES = S.data.recipes.filter(r => r.race === race() && (S.unverified || r.ml > 0) && !QUEST_TOOL.test(item(r.p)[0]));
   FALLBACK = S.data.recipes.filter(r => r.ml > 0 && tableOf(r)).map(r => ({ml:r.ml, prof:r.prof, tab:tableOf(r)}));
   indexGroups();
   BY_OUT = {};
@@ -1014,6 +1021,7 @@ function xpOwnCount(){
 function syncMode(){
   document.querySelectorAll('.want-btn').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === S.mode));
   $('#focusProfit').hidden = S.mode !== 'profit';  // Profit card only when crafting in bulk to sell
+  if(MODE_PAGE[S.mode]){ $('#tagline').textContent = MODE_PAGE[S.mode].tagline; document.title = MODE_PAGE[S.mode].title }
   $('#focusExp').hidden = S.mode !== 'exp';
   $('#prof').hidden = S.mode === 'exp';
   document.querySelectorAll('#xpStrategy button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === S.xpStrategy));
@@ -1027,7 +1035,9 @@ function syncMode(){
 function setMode(m){
   if(m === S.mode) return;
   store.set(colsKey(), S.cols); store.set(sortKey(), S.sort);
-  S.mode = m; store.set('mode', m);
+  S.mode = m;
+  // the hosted site and serve.py have a page per mode; elsewhere (the claude.ai copy) the address stays
+  if((S.hosted || LIVE) && MODE_PAGE[m] && location.pathname !== MODE_PAGE[m].path) try{ history.pushState(null, '', MODE_PAGE[m].path) }catch(e){}
   S.cols = store.get(colsKey(), DEF_COLS[m]);
   S.sort = store.get(sortKey(), defaultSort(m));
   S.open = null; syncMode(); render();
@@ -1053,6 +1063,7 @@ function feedbackForm(){
 function buildSettings(){
   if(S.mode !== 'profit'){ S.cols = store.get(colsKey(), DEF_COLS[S.mode]); S.sort = store.get(sortKey(), defaultSort(S.mode)) }
   document.querySelectorAll('.want-btn').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+  window.addEventListener('popstate', () => setMode(modeFromPath()));
   document.querySelectorAll('#xpStrategy button').forEach(b => b.addEventListener('click', () => {
     S.xpStrategy = b.dataset.v; store.set('xpStrategy', S.xpStrategy);
     S.sort = S.xpStrategy === 'fast' ? {k:'xpa', dir:-1} : {k:'kxp', dir:1}; store.set(sortKey(), S.sort);
