@@ -95,7 +95,7 @@ def build():
     DIST.mkdir()
     for mode, p in PAGES.items():
         (DIST / p['file']).write_text(page(mode), encoding='utf8')
-    for f in ('data.json', 'favicon.svg', 'favicon.ico', 'apple-touch-icon.png', 'og.png'):
+    for f in ('data.json', 'favicon.svg', 'favicon.ico', 'apple-touch-icon.png', 'og.png', 'BingSiteAuth.xml'):  # last: Bing Webmaster Tools verification
         shutil.copy(APP / f, DIST / f)
     if (SITE / 'speeds').exists():
         shutil.copytree(SITE / 'speeds', DIST / 'speeds')
