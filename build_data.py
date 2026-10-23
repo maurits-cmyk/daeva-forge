@@ -1,4 +1,6 @@
-"""Build app/data.json for the crafting calculator: recipes + success tables + a price snapshot.
+"""Build the crafting calculator's data: app/data.json (recipes, success tables, supply requests, vendor prices;
+committed, the site is built from it) and app/snapshot.json (one server's prices and sale speeds for local use;
+not committed, the site has hourly prices and weekly sale speeds of its own).
 
   python build_data.py                     # Israphel (NA East, Asmodian), reuse cached recipes
   python build_data.py --server 12101      # any aion2.exchange server id (see /api/servers)
@@ -156,8 +158,8 @@ def main():
     # cached per server for 12 h (one request per item is slow when aion2.exchange throttles)
     vel_file = DATA / f'velocity_{server_id}.json'
     cache = json.load(open(vel_file, encoding='utf8')) if vel_file.exists() else {}
-    if not cache and (APP / 'data.json').exists():  # seed from the last snapshot of this server
-        old = json.load(open(APP / 'data.json', encoding='utf8'))
+    if not cache and (APP / 'snapshot.json').exists():  # seed from the last snapshot of this server
+        old = json.load(open(APP / 'snapshot.json', encoding='utf8'))
         if old.get('server', {}).get('id') == server_id and old.get('velocity'):
             cache = {'at': time.time() - 6 * 3600, 'v': old['velocity']}
     fresh = cache and time.time() - cache.get('at', 0) < 12 * 3600 and '--refresh-speeds' not in args
@@ -174,15 +176,16 @@ def main():
     if not fresh:
         vel_file.write_text(json.dumps({'at': time.time(), 'v': velocity}), encoding='utf8')
 
-    out = {'built': datetime.now(timezone.utc).isoformat(timespec='seconds'),
-           'recipesBuilt': hub.get('builtAt'),
-           'server': {'id': srv['server_id'], 'name': srv['name'], 'region': srv['region_name'], 'faction': srv['faction']},
+    server = {'id': srv['server_id'], 'name': srv['name'], 'region': srv['region_name'], 'faction': srv['faction']}
+    out = {'recipesBuilt': hub.get('builtAt'), 'server': server,  # server: the one shown first
            'servers': [[s['server_id'], s['name'], s['region'], s['faction']] for s in servers],
-           'items': item_out, 'recipes': recipes, 'rates': rates, 'official': official, 'prices': prices, 'vendor': vendor, 'groups': groups, 'gear': gear, 'velocity': velocity, 'exp': exp}
+           'items': item_out, 'recipes': recipes, 'rates': rates, 'official': official, 'vendor': vendor, 'groups': groups, 'gear': gear, 'exp': exp}
+    snap = {'built': datetime.now(timezone.utc).isoformat(timespec='seconds'), 'server': server, 'prices': prices, 'velocity': velocity}
     APP.mkdir(exist_ok=True)
     (APP / 'data.json').write_text(json.dumps(out, separators=(',', ':'), ensure_ascii=False), encoding='utf8')
+    (APP / 'snapshot.json').write_text(json.dumps(snap, separators=(',', ':'), ensure_ascii=False), encoding='utf8')
     print(f"{len(recipes)} recipes, {len(item_out)} items, {len(official)} official + {len(rates)} GameWith success tables, {len(vendor)} vendor prices, {len(groups)} supply request groups, {len(velocity)} sale speeds, {sum(1 for v in exp.values() if v[1] == 'm')} measured EXP values, "
-          f"{len(prices)} priced items on {srv['name']} ({srv['region_name']}, {srv['faction']}) -> app/data.json "
+          f"{len(prices)} priced items on {srv['name']} ({srv['region_name']}, {srv['faction']}) -> app/snapshot.json "
           f"({(APP / 'data.json').stat().st_size // 1024} KB)")
 
 

@@ -6,6 +6,7 @@ Not affiliated with, endorsed or sponsored by NCSOFT.
 ## How it works
 
 - `app/index.html` is the whole page; `app/data.json` holds recipes, success chances, supply requests and vendor prices.
+  Prices come separately: hourly files on the site, or `app/snapshot.json` (not committed) when run locally.
 - Two pages, one app: `/` (specific items) and `/profit` (crafting in bulk for profit); the address picks the mode.
 - `hosting.py build` + `hosting.py prices` assemble `dist/`; GitHub Actions runs them every hour (about 10 minutes
   after Aion2Market captures its prices) and deploys `dist/` to a Cloudflare Worker (`wrangler.jsonc`).
@@ -17,7 +18,7 @@ Not affiliated with, endorsed or sponsored by NCSOFT.
 
 ```
 python serve.py              # http://localhost:8642, live prices for any server
-python build_data.py         # rebuild app/data.json (recipes, success tables, snapshot)
+python build_data.py         # rebuild app/data.json (recipes, success tables) and app/snapshot.json (prices)
 ```
 
 ## Data

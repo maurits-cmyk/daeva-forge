@@ -10,6 +10,7 @@ data/*.log
 data/hub_chunk.js
 data/prices_*.json
 data/velocity_*.json
+app/snapshot.json
 # planning notes and drafts stay local
 TODO.md
 *-request.md
