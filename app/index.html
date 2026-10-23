@@ -602,7 +602,7 @@ function craftUnit(r, as, stack){
   let credit = 0, left = null;
   const otherKey = as === 'base' ? (r.combo ? r.combo.p : null) : r.p;
   if(S.credit && otherKey != null){
-    left = leftoverValue(otherKey, a.total / (s.p * r.y));  // each finished item carries one success's share of the cost
+    left = leftoverValue(otherKey);
     credit = s.p * r.y * (as === 'base' ? c : 1 - c) * left.v;
   }
   // Leftovers can be worth more than the attempt (that recipe then pays on its own and shows as its own row);
@@ -610,9 +610,8 @@ function craftUnit(r, as, stack){
   const raw = (a.total - credit) / (s.p * share * r.y);
   return {v: Math.max(0, raw), r, left, free: raw <= 0, att: 1 / (s.p * share * r.y)};  // att = attempts per unit made
 }
-// What a leftover from crafting an input is worth: its sale after fees, but gear whose profit per listing
-// (sale after fees minus what one finished item costs to make) wouldn't earn a sale slot is assumed
-// trashed, the same test the Profit / sale column uses. Stackables always sell.
+// What a leftover from crafting an input is worth: its sale after fees, but gear whose sale wouldn't earn a sale
+// slot is assumed trashed (see listable). Stackables always sell.
 function isGear(k){ GEAR ||= new Set((S.data.gear || []).map(String)); return GEAR.has(String(k)) }
 // Hours a listing occupies its slot: wait for the next buyer while you are the cheapest listing.
 // At least 1 h (the sales data is hourly); unknown sale speed counts as a day; no sales in a week counts as a week.
@@ -624,12 +623,15 @@ function slotHours(k){
 }
 const perSlotHour = (profit, k) => profit / slotHours(k);  // Kina a listing earns per hour of slot time
 const earnsSlot = (profit, k) => isFinite(slotHours(k)) && perSlotHour(profit, k) >= S.slotRate;
-function leftoverValue(k, costPerItem){
+// Whether a finished piece of gear is worth listing rather than trashing. What it cost to make is spent either
+// way, so only its sale after fees counts: it must earn a slot-hour's worth for every hour it sits listed.
+const listable = (k, v) => !S.slots || !isGear(k) || earnsSlot(v, k);
+function leftoverValue(k){
   const sp = sellPrice(k);
   if(!sp) return {v:0, k, trashed:true, why:'no sellers'};
-  const v = net(sp.v), profit = v - costPerItem;
-  if(S.slots && isGear(k) && !earnsSlot(profit, k)) return {v:0, k, trashed:true, profit, ph: perSlotHour(profit, k), why:'not worth a slot'};
-  return {v, k, trashed:false, profit};
+  const v = net(sp.v);
+  if(!listable(k, v)) return {v:0, k, trashed:true, why:'not worth a slot'};
+  return {v, k, trashed:false};
 }
 function evaluate(r){
   const s = successOf(r);
@@ -642,11 +644,10 @@ function evaluate(r){
   if(up && up.kind === 'last') flags.push('upstale');
   const cost = a.missing.length ? null : a.total;
   // Payout per success: the ordinary item, or the Combo upgrade (valued as the ordinary item if it has no price).
-  // With the slot rule on, gear whose profit per listing (sale after fees minus one finished item's cost)
-  // would not earn a sale slot is trashed and pays nothing.
+  // With the slot rule on, gear whose sale wouldn't earn a sale slot is trashed and pays nothing.
   const bv = base ? net(base.v) : null, uv0 = up ? net(up.v) : null, b2 = bv != null ? bv : uv0, u2 = uv0 != null ? uv0 : b2;
   const cpi = cost != null && s.p ? cost / (s.p * r.y) : null;
-  const trash = (k, v) => S.slots && v != null && cpi != null && isGear(k) && !earnsSlot(v - cpi, k);
+  const trash = (k, v) => v != null && !listable(k, v);
   const trashB = trash(r.p, b2), trashU = r.combo ? trash(r.combo.p, u2) : false;
   if(trashB) flags.push('trashB');
   if(trashU) flags.push('trashU');
@@ -882,7 +883,7 @@ function renderRows(room = 99, pre = null, stacked = false){  // room: optional 
       ph: () => `<td class="num ${e.sale.gear && e.sale.ph != null && isFinite(e.sale.hours) ? (e.sale.worth ? 'gain' : 'loss') : ''}">${e.sale.ph != null && isFinite(e.sale.hours) ? kina(e.sale.ph) : '–'}</td>`,
       speed: () => `<td class="num">${e.sale.hours == null ? '–' : !isFinite(e.sale.hours) || noSales(e.sale.k) ? '⚠ > 1 week' : e.sale.hours < 48 ? (e.sale.hours < 1 ? '<1 h' : Math.round(e.sale.hours) + ' h') : (e.sale.hours / 24).toFixed(1) + ' d'}</td>`,
       one: () => `<td class="num">${kina(costOfOne(e))}</td>`,
-      bad: () => `<td class="num ${tone(e.plan && e.plan.bad)}">${e.plan && e.plan.bad != null ? kina(e.plan.bad) : '–'}</td>`,
+      bad: () => `<td class="num ${tone(e.plan && e.plan.bad)}">${e.plan && e.plan.bad != null ? kina(e.plan.bad) : e.plan && e.plan.n < 1 ? `<span class="muted" title="One attempt costs ${kina(e.cost)}, more than your ${kina(S.budget)}">over budget</span>` : '–'}</td>`,
     };
     return `<tr class="rec${open ? ' open' : ''}${e.s.locked ? ' locked' : ''}" data-id="${e.r.id}" tabindex="0" aria-expanded="${open}">${vis.map(c => c.k === 'name' ? cell.name() : cell[c.k]().replace('<td', `<td data-label="${esc(c.label)}"`)).join('')}</tr>`
       + (open ? `<tr class="sheet"><td colspan="${cols}">${S.mode === 'single' ? singleSheet(e) : sheet(e)}</td></tr>` : '');
@@ -1028,9 +1029,10 @@ function sheet(e){
 }
 function saleBlock(e){
   const s = e.sale; if(s.per == null && s.hours == null) return '';
-  const r = e.r, up = r.combo ? item(r.combo.p)[0] : null, cpi = e.cpi;
-  const outLine = (k, name, v, trashed) => v == null || cpi == null ? '' :
-    `<dt>${esc(name)} on its own</dt><dd class="${trashed ? 'loss' : v - cpi >= 0 ? 'gain' : 'loss'}">${kina(v - cpi)} / listing<br>${kina(perSlotHour(v - cpi, k))} / slot-hour${noSales(k) ? '<br><span class="warn-text">⚠ no sales in a week</span>' : ''}${trashed ? '<span class="muted">trashed</span>' : ''}</dd>`;
+  const r = e.r, up = r.combo ? item(r.combo.p)[0] : null;
+  // once made, an item's cost is spent: it's listed if its sale earns the slot, else trashed
+  const outLine = (k, name, v, trashed) => v == null ? '' :
+    `<dt>${esc(name)}, once made</dt><dd class="${trashed ? 'loss' : 'gain'}">earns ${kina(perSlotHour(v, k))} / slot-hour${noSales(k) ? '<br><span class="warn-text">⚠ no sales in a week</span>' : ''}${trashed ? '<span class="muted">trashed</span>' : ''}</dd>`;
   const bNet = e.base ? net(e.base.v) : null, uNet = e.up ? net(e.up.v) : null;
   return `<h3 style="margin-top:14px">Selling</h3>
     <dl class="kv">
