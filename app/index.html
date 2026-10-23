@@ -797,7 +797,7 @@ const defaultSort = m => m === 'exp' ? (S.xpStrategy === 'fast' ? {k:'xpa', dir:
 const GRADE_RANK = {Common: 0, Rare: 1, Legend: 2, Epic: 3, Unique: 4};
 const showCol = c => (!c.exp || S.mode === 'exp') && (!c.single || S.mode === 'single') && (!c.plan || S.mode === 'profit');
 const costOfOne = e => e.cost != null && e.s.p ? e.cost / (e.s.p * e.r.y) : null;
-let HIDDEN_COLS = 0;
+let HIDDEN_COLS = 0, HIDDEN_BY = new Map();  // HIDDEN_BY: filter -> search matches it hides
 function visibleCols(room){
   const PRIORITY = PRIORITY_BY_MODE[S.mode];
   const wanted = COLS.filter(c => !c.fixed && S.cols.includes(c.k) && showCol(c) && (!c.plan || S.useBudget))
@@ -823,21 +823,24 @@ function render(...args){
   if(top != null && after) window.scrollBy(0, after.getBoundingClientRect().top - top);
 }
 function renderRows(room = 99, pre = null, stacked = false){  // room: optional columns to try; pre: rows already evaluated and sorted; stacked: card layout
-  if(!pre) memo = new Map();
+  if(!pre) memo = new Map(), HIDDEN_BY = new Map();
   const q = S.q.trim().toLowerCase();
+  // the filter (named as in the settings) that hides a recipe, or null
+  const hiddenBy = e => {
+    if(S.mode === 'profit' && S.canCraft && e.s.locked) return 'Only recipes I can craft now';
+    if(S.mode === 'profit' && S.useBudget && S.affordable && e.cost != null && e.cost > S.budget) return 'Only crafts I can afford';
+    if(S.mode === 'profit' && S.slots && S.hideSlow && e.sale.worth === false) return 'Hide gear not worth a slot';
+    if(S.mode === 'profit' && S.needListings && !(e.base && e.base.kind !== 'last' && e.list > 0)) return 'Only items with sellers on the market';
+    if(S.prof && e.r.prof !== S.prof) return S.prof + ' only';
+    return null;
+  };
   let rows = pre || RECIPES.map(evaluate).filter(e => {
-    if(S.mode === 'exp'){
-      // leveling: recipes of the chosen profession you can craft now that give EXP
-      if(e.r.prof !== S.xpProf || e.s.locked || e.xp.base == null) return false;
-    } else {
-      if(S.mode === 'profit' && S.canCraft && e.s.locked) return false;
-      if(S.mode === 'profit' && S.useBudget && S.affordable && e.cost != null && e.cost > S.budget) return false;
-      if(S.mode === 'profit' && S.slots && S.hideSlow && e.sale.worth === false) return false;
-      if(S.mode === 'profit' && S.needListings && !(e.base && e.base.kind !== 'last' && e.list > 0)) return false;
-    }
-    if(S.mode !== 'exp' && S.prof && e.r.prof !== S.prof) return false;
+    // leveling: recipes of the chosen profession you can craft now that give EXP
+    if(S.mode === 'exp' && (e.r.prof !== S.xpProf || e.s.locked || e.xp.base == null)) return false;
     if(q && !(e.name.toLowerCase().includes(q) || e.r.c.some(([k]) => item(k)[0].toLowerCase().includes(q)))) return false;
-    return true;
+    const by = S.mode === 'exp' ? null : hiddenBy(e);
+    if(by && q) HIDDEN_BY.set(by, (HIDDEN_BY.get(by) || 0) + 1);  // a search says what its hidden matches are hidden by
+    return !by;
   });
   const {k, dir} = S.sort;
   const val = e => k === 'gr' ? (GRADE_RANK[item(e.r.p)[1]] ?? 0) * 1000 + e.r.ml : k === 'ml' ? e.r.ml : k === 'name' ? e.name : k === 'prof' ? e.r.prof + String(e.r.ml).padStart(3,'0') : k === 'p' ? e.s.p : k === 'list' ? e.list
@@ -898,6 +901,11 @@ function renderRows(room = 99, pre = null, stacked = false){  // room: optional 
   }
 }
 function summary(rows){
+  summaryText(rows);
+  const n = [...HIDDEN_BY.values()].reduce((a, b) => a + b, 0);
+  if(n) $('#summary').innerHTML += ` · <span class="warn-text">${n} more match${n === 1 ? 'es' : ''} but ${n === 1 ? 'is' : 'are'} hidden by ${[...HIDDEN_BY.keys()].map(f => `“${esc(f)}”`).join(', ')}</span>`;
+}
+function summaryText(rows){
   if(S.mode === 'single'){ $('#summary').innerHTML = `<b>${rows.length}</b> recipe${rows.length === 1 ? '' : 's'} · open one to see what it takes to make`; return }
   if(S.mode === 'exp'){
     const m = S.mastery[S.xpProf] || 1, measured = rows.filter(e => e.xp.src !== 'est').length;
