@@ -310,7 +310,7 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
       <div class="mastery">
         <label for="slotRate">A slot-hour is worth</label><input type="text" id="slotRate" inputmode="decimal" autocomplete="off">
       </div>
-      <div class="row"><label><input type="checkbox" id="hideSlow" checked> Hide gear not worth a slot</label></div>
+      <div class="row"><label><input type="checkbox" id="hideSlow"> Hide gear not worth a slot</label></div>
       <span class="hint" id="slotHint">You have 10 sale slots and gear doesn't stack. Gear that earns less than this per hour listed gets trashed.</span>
       <div class="row"><label><input type="checkbox" id="groupPrice"> Sell at the cheapest item of its supply request group</label></div>
       <div class="row" style="padding-left:22px"><label><input type="checkbox" id="groupDragon"> Also for Dragon Lord gear</label></div>
@@ -430,7 +430,7 @@ const S = {
   groupPrice: store.get('groupPrice', false), groupDragon: store.get('groupDragon', false),
   useBudget: store.get('useBudget', true), budget: store.get('budget', 25e6), affordable: store.get('affordable', false),
   riskRank: store.get('riskRank', true), pwin: store.get('pwin', 90),
-  slots: store.get('slots', true), slotRate: store.get('slotRate', 100000), hideSlow: store.get('hideSlow', true),
+  slots: store.get('slots', true), slotRate: store.get('slotRate', 100000), hideSlow: store.get('hideSlow', false),
   // 'single' (daevaforge.com/): specific items for yourself, mostly gear upgrades; 'profit' (/profit): crafting in bulk
   // to sell. The address picks the mode, so shared links open the right one. Experience mode ('exp') is shelved
   mode: modeFromPath(), xpStrategy: store.get('xpStrategy', 'cheap'), xpSell: store.get('xpSell', true),
