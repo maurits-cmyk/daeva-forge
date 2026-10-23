@@ -1074,9 +1074,11 @@ function groupNote(k, who){
     + (b ? `Cheapest in the group now: ${esc(item(b.via)[0])} at ${kina(b.v)}${active ? ', which sets this price' : ''}.` : 'No sellers in the group right now.') + '</p>';
 }
 function statusBar(){
-  const s = S.server, fresh = (LIVE || S.hosted) && S.liveOk, mode = fresh ? `<span class="pill live"><span class="dot"></span>Live prices</span>` : `<span class="pill snap"><span class="dot"></span>${LIVE ? 'Snapshot (live prices unavailable)' : 'Price snapshot'}</span>`;
+  const s = S.server, fresh = (LIVE || S.hosted) && S.liveOk;
+  if(!fresh && !S.fetchedAt){ $('#status').innerHTML = `<span class="pill snap"><span class="dot"></span>Prices didn't load; reload to try again</span>`; $('#dataInfo').textContent = `Recipes updated ${S.data.recipesBuilt}.`; return }
+  const mode = fresh ? `<span class="pill live"><span class="dot"></span>Live prices</span>` : `<span class="pill snap"><span class="dot"></span>${LIVE ? 'Snapshot (live prices unavailable)' : 'Price snapshot'}</span>`;
   $('#status').innerHTML = `${mode}<span class="pill">${esc(s.name)} · ${esc(s.region)} · ${esc(s.faction)}</span>${fresh ? '<span class="pill" title="Aion2Market takes new prices once an hour">Prices hourly · updated ' : '<span class="pill">Prices updated '}${ago(S.fetchedAt)}</span>`;
-  $('#dataInfo').textContent = `Recipes updated ${S.data.recipesBuilt}. Prices: ${fresh ? 'hourly from Aion2Market' : 'snapshot from ' + new Date(S.data.built).toLocaleString()}.`;
+  $('#dataInfo').textContent = `Recipes updated ${S.data.recipesBuilt}. Prices: ${fresh ? 'hourly from Aion2Market' : S.data.built ? 'snapshot from ' + new Date(S.data.built).toLocaleString() : 'not loaded'}.`;
 }
 
 /* ---------- settings UI ---------- */
@@ -1313,17 +1315,24 @@ function pollPrices(id){
 }
 async function boot(){
   try{
-    S.data = await (await fetch('data.json', {cache:'no-cache'})).json();  // revalidate: the snapshot is rebuilt in place
+    S.data = await (await fetch('data.json', {cache:'no-cache'})).json();  // recipes, success tables, supply requests
   }catch(e){ $('#rows').innerHTML = '<tr><td colspan="8" class="empty">The recipe data did not load. Reload the page to try again.</td></tr>'; return }
-  S.server = S.data.server;
-  S.prices = S.data.prices;
-  S.pricesAt = Object.values(S.prices).reduce((m, p) => p[3] && p[3] > m ? p[3] : m, '') || S.data.built;
-  S.fetchedAt = S.data.built;
+  S.server = S.data.server; S.prices = {};
   if(!LIVE){ try{ const r = await fetch('prices/index.json', {cache:'no-cache'}); if(r.ok) S.hosted = await r.json() }catch(e){} }
+  if(!S.hosted){  // local: one server's prices and sale speeds, rebuilt every 12 hours (the site has its own)
+    try{
+      const snap = await (await fetch('snapshot.json', {cache:'no-cache'})).json();
+      Object.assign(S.data, {built: snap.built, velocity: snap.velocity}); S.server = snap.server; S.prices = snap.prices;
+      S.pricesAt = Object.values(S.prices).reduce((m, p) => p[3] && p[3] > m ? p[3] : m, '') || snap.built;
+      S.fetchedAt = snap.built;
+    }catch(e){}
+  }
   setInterval(statusBar, 6e4);  // keep "updated X min ago" current
-  buildSettings(); foldCards(); indexRecipes(); serverPicker(); statusBar(); render(); feedbackForm();
-  if(LIVE) loadLive(store.get('server', S.server.id));
-  else if(S.hosted && S.hosted.servers.length){ const want = store.get('server', S.server.id); loadHosted(S.hosted.servers.includes(want) ? want : S.hosted.servers[0]) }
+  buildSettings(); foldCards(); indexRecipes(); serverPicker(); feedbackForm();
+  // the first drawing waits for the prices, so the list doesn't flash "price missing"
+  if(LIVE) await loadLive(store.get('server', S.server.id));
+  else if(S.hosted && S.hosted.servers.length){ const want = store.get('server', S.server.id); await loadHosted(S.hosted.servers.includes(want) ? want : S.hosted.servers[0]) }
+  else { statusBar(); render() }
 }
 boot();
 </script>

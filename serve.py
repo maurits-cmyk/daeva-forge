@@ -4,8 +4,8 @@
 
 Serves app/, forwards /api/* to aion2.exchange (current asks for any server), and runs the
 Combat Power tracker (/cp): a reading on start and every 30 minutes while this runs, plus
-/local/character endpoints. Rebuilds app/data.json (snapshot prices, sale speeds) every 12 hours. The published copy uses the price snapshot in
-data.json and has no tracker. Python stdlib only.
+/local/character endpoints. Rebuilds app/snapshot.json (snapshot prices, sale speeds) every 12 hours. The published copy
+has hourly prices of its own and no tracker. Python stdlib only.
 """
 import http.server, json, socketserver, sys, threading, urllib.parse, urllib.request, webbrowser
 from pathlib import Path
@@ -30,9 +30,9 @@ REFRESH_EVERY = 12 * 3600
 
 
 def data_loop(stop):
-    """Rebuild app/data.json (snapshot prices, sale speeds) when it is older than 12 hours."""
+    """Rebuild app/snapshot.json (snapshot prices, sale speeds) when it is older than 12 hours."""
     import subprocess, time
-    data = APP / 'data.json'
+    data = APP / 'snapshot.json'
     while not stop.is_set():
         age = time.time() - data.stat().st_mtime if data.exists() else REFRESH_EVERY
         if age >= REFRESH_EVERY - 60:
