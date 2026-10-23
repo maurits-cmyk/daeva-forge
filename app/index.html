@@ -64,6 +64,7 @@ h1 small{display:block;font:500 11px/1.4 var(--f-body);letter-spacing:.14em;text
 .want-btn[aria-pressed="true"]{color:#fff;background:linear-gradient(180deg,rgba(118,150,190,.16),rgba(118,150,190,.03))}
 .want-btn::after{content:"";position:absolute;left:12%;right:12%;bottom:0;height:2px;opacity:0;transition:opacity .2s ease;background:linear-gradient(90deg,transparent,#dff1ff,transparent);box-shadow:0 0 10px var(--glow)}
 .want-btn[aria-pressed="true"]::after{opacity:1;content:"";position:absolute;left:12%;right:12%;bottom:0;height:2px;background:linear-gradient(90deg,transparent,#dff1ff,transparent);box-shadow:0 0 10px var(--glow)}
+.warn-text{color:var(--warn)}
 .mtable input.owned{width:64px;text-align:right}
 .owninline{display:none}
 .owninline input.owned{width:46px;padding:2px 5px;margin:0;font:400 13px var(--f-num);letter-spacing:0}
@@ -381,7 +382,7 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
     <span><span class="chip risk">risky for your Kina</span>bad luck could mean a loss</span>
     <span><span class="chip risk">not worth a slot</span>earns too little per hour listed</span>
     <span><span class="chip">priced as …</span>cheapest item in its supply request group</span>
-    <span><span class="chip warn">last ask</span>no sellers now; last price seen</span>
+    <span><span class="chip warn">⚠ last ask</span>no sellers now; last price seen</span>
     <span><span class="chip warn">est. success</span>success chance estimated</span>
   </div>
 
@@ -522,12 +523,15 @@ function successOf(r){
   return {p: tab.r[i], diff, locked: diff < 0, est};
 }
 let RECIPES = [], BY_OUT = {};
-// Morph: 1 Odyle of a tier becomes 1 of these materials of the same tier; never fails, no limit, and recipes accept the
-// Bound result (Aion2Market's method page, 2026-10-23). Radiant tier unconfirmed, so not listed yet.
+// Morph (Substance Morph): 1 Odyle of a tier becomes 1 of these materials of the same tier; never fails, no fee, and
+// recipes accept the Bound result (Aion2Market's method page; Radiant tier and Asvata logs confirmed in-game 2026-10-23).
+// "Morph Available N" in-game is just how many of that Odyle you hold: there's no cap beyond that.
+const MORPH_OUTS = tier => ['Orichalcum Ore', 'Yggdrasil Log', 'Asvata Log', 'Ruby Gemstone', 'Sapphire Gemstone', 'Diamond Gemstone'].map(m => tier + m);
 const MORPHS = {
-  'Odyle': ['Orichalcum Ore', 'Yggdrasil Log'],
-  'Fine Odyle': ['Fine Orichalcum Ore', 'Fine Yggdrasil Log', 'Fine Ruby Gemstone', 'Fine Sapphire Gemstone', 'Fine Diamond Gemstone'],
-  'Pure Odyle': ['Pure Orichalcum Ore', 'Pure Yggdrasil Log', 'Pure Ruby Gemstone', 'Pure Sapphire Gemstone', 'Pure Diamond Gemstone'],
+  'Odyle': ['Orichalcum Ore', 'Yggdrasil Log', 'Asvata Log'],
+  'Fine Odyle': MORPH_OUTS('Fine '),
+  'Pure Odyle': MORPH_OUTS('Pure '),
+  'Radiant Odyle': MORPH_OUTS('Radiant '),
 };
 let MORPH_FROM = {};  // material key -> Odyle key
 function indexMorphs(){
@@ -611,10 +615,12 @@ function craftUnit(r, as, stack){
 // trashed, the same test the Profit / sale column uses. Stackables always sell.
 function isGear(k){ GEAR ||= new Set((S.data.gear || []).map(String)); return GEAR.has(String(k)) }
 // Hours a listing occupies its slot: wait for the next buyer while you are the cheapest listing.
-// At least 1 h (the sales data is hourly); unknown sale speed counts as a day; no sales in a week = never.
+// At least 1 h (the sales data is hourly); unknown sale speed counts as a day; no sales in a week counts as a week.
+const NO_SALES_H = 168;
+const noSales = k => k != null && (S.data.velocity || {})[k] === 0;
 function slotHours(k){
   const vel = (S.data.velocity || {})[k];
-  return vel == null ? 24 : vel > 0 ? Math.max(1, 24 / vel) : Infinity;
+  return vel == null ? 24 : vel > 0 ? Math.max(1, 24 / vel) : NO_SALES_H;
 }
 const perSlotHour = (profit, k) => profit / slotHours(k);  // Kina a listing earns per hour of slot time
 const earnsSlot = (profit, k) => isFinite(slotHours(k)) && perSlotHour(profit, k) >= S.slotRate;
@@ -667,9 +673,9 @@ function saleInfo(e){
   const worth = !gear || per == null || per <= 0 ? null : earnsSlot(per, k);  // loss-makers are judged by their profit, not their slot
   return {v, k, hours, gear, per, ph, worth};
 }
-function fmtHours(h){
+function fmtHours(h, k){
   if(h == null) return 'unknown';
-  if(!isFinite(h)) return 'no sales in a week';
+  if(!isFinite(h) || noSales(k)) return '⚠ no sales in a week';
   return h < 1 ? 'under 1 h' : h < 48 ? `about ${Math.round(h)} h` : `about ${(h / 24).toFixed(1)} days`;
 }
 
@@ -850,8 +856,8 @@ function renderRows(room = 99, pre = null, stacked = false){  // room: optional 
   if(!rows.length){ body.innerHTML = `<tr><td colspan="${cols}" class="empty">No recipes match. Try clearing the search or loosening the filters.</td></tr>`; summary(rows); return }
   body.innerHTML = rows.map(e => {
     const g = item(e.r.p)[1] || 'Common';
-    const chips = (e.s.locked && S.mode !== 'single' ? `<span class="chip lock">needs ${e.r.ml}</span>` : '') + (e.flags.includes('stale') ? '<span class="chip warn">last ask</span>' : '') + (e.flags.includes('upstale') ? '<span class="chip warn">upgrade: last ask</span>' : '') + (S.mode === 'profit' && e.flags.includes('trashB') ? `<span class="chip risk" title="Not worth a sale slot, counted as trashed">${e.r.combo ? 'ordinary ones trashed' : 'not worth a slot'}</span>` : '') + (S.mode === 'profit' && e.flags.includes('trashU') ? '<span class="chip risk" title="Not worth a sale slot, counted as trashed">upgrades trashed</span>' : '') + (S.mode === 'profit' && e.base && e.base.kind === 'group' ? `<span class="chip" title="${esc(e.base.group.name)}">priced as ${esc(item(e.base.via)[0])}</span>` : '') + (e.missing.length ? '<span class="chip warn">price missing</span>' : '') + (e.s.p == null ? '<span class="chip warn">no success data</span>' : e.s.est ? '<span class="chip warn">est. success</span>' : '')
-      + (S.mode === 'profit' && S.slots && e.sale.worth === false ? `<span class="chip risk" title="Earns ${kina(e.sale.ph)} per slot-hour (${kina(e.sale.per)} per listing, sells in ${fmtHours(e.sale.hours)}); a slot-hour is worth ${kina(S.slotRate)}">not worth a slot</span>` : '')
+    const chips = (e.s.locked && S.mode !== 'single' ? `<span class="chip lock">needs ${e.r.ml}</span>` : '') + (e.flags.includes('stale') ? '<span class="chip warn">⚠ last ask</span>' : '') + (e.flags.includes('upstale') ? '<span class="chip warn">⚠ combo: last ask</span>' : '') + (S.mode === 'profit' && e.flags.includes('trashB') ? `<span class="chip risk" title="Not worth a sale slot, counted as trashed">${e.r.combo ? 'ordinary ones trashed' : 'not worth a slot'}</span>` : '') + (S.mode === 'profit' && e.flags.includes('trashU') ? '<span class="chip risk" title="Not worth a sale slot, counted as trashed">upgrades trashed</span>' : '') + (S.mode === 'profit' && e.base && e.base.kind === 'group' ? `<span class="chip" title="${esc(e.base.group.name)}">priced as ${esc(item(e.base.via)[0])}</span>` : '') + (e.missing.length ? '<span class="chip warn">price missing</span>' : '') + (e.s.p == null ? '<span class="chip warn">no success data</span>' : e.s.est ? '<span class="chip warn">est. success</span>' : '')
+      + (S.mode === 'profit' && S.slots && e.sale.worth === false ? `<span class="chip risk" title="Earns ${kina(e.sale.ph)} per slot-hour (${kina(e.sale.per)} per listing, sells in ${fmtHours(e.sale.hours, e.sale.k)}); a slot-hour is worth ${kina(S.slotRate)}">not worth a slot</span>` : '')
       + (S.mode === 'exp' && e.xp.src === 'est' ? '<span class="chip warn" title="Estimated from recipe level and grade; open the recipe to enter the EXP you see in-game">est. EXP</span>' : '')
       + (S.mode === 'exp' && e.xp.src === 'yours' ? '<span class="chip">your EXP</span>' : '')
       + (S.mode === 'profit' && S.useBudget && S.riskRank && e.plan && e.ppa > 0 ? (e.plan.safe ? '<span class="chip good">safe bet</span>' : `<span class="chip risk" title="${e.plan.needKina ? 'About ' + kina(e.plan.needKina) + ' makes it safe' : ''}">risky for your Kina</span>`) : '');
@@ -874,7 +880,7 @@ function renderRows(room = 99, pre = null, stacked = false){  // room: optional 
       n: () => `<td class="num">${e.plan ? e.plan.n.toLocaleString('en-US') : '–'}</td>`,
       sale: () => `<td class="num ${tone(e.sale.per)}">${kina(e.sale.per)}</td>`,
       ph: () => `<td class="num ${e.sale.gear && e.sale.ph != null && isFinite(e.sale.hours) ? (e.sale.worth ? 'gain' : 'loss') : ''}">${e.sale.ph != null && isFinite(e.sale.hours) ? kina(e.sale.ph) : '–'}</td>`,
-      speed: () => `<td class="num">${e.sale.hours == null ? '–' : !isFinite(e.sale.hours) ? '> 1 week' : e.sale.hours < 48 ? (e.sale.hours < 1 ? '<1 h' : Math.round(e.sale.hours) + ' h') : (e.sale.hours / 24).toFixed(1) + ' d'}</td>`,
+      speed: () => `<td class="num">${e.sale.hours == null ? '–' : !isFinite(e.sale.hours) || noSales(e.sale.k) ? '⚠ > 1 week' : e.sale.hours < 48 ? (e.sale.hours < 1 ? '<1 h' : Math.round(e.sale.hours) + ' h') : (e.sale.hours / 24).toFixed(1) + ' d'}</td>`,
       one: () => `<td class="num">${kina(costOfOne(e))}</td>`,
       bad: () => `<td class="num ${tone(e.plan && e.plan.bad)}">${e.plan && e.plan.bad != null ? kina(e.plan.bad) : '–'}</td>`,
     };
@@ -1015,22 +1021,22 @@ function sheet(e){
       ${S.mode === 'profit' ? planBlock(e) : ''}
       <div class="notes" style="margin-top:10px">
         ${groupNote(r.p, 'This item')}${r.combo ? groupNote(r.combo.p, 'The Combo upgrade') : ''}
-        ${r.combo && !e.up ? '<p>The upgrade has no sellers, so it\'s valued as the ordinary item.</p>' : ''}
-        ${e.up && e.up.kind === 'last' ? `<p>The upgrade has no sellers now; using its last price, from ${ago(e.up.seen)}.</p>` : ''}
-        ${e.base && e.base.kind === 'last' ? `<p>No sellers now; using the last price, from ${ago(e.base.seen)}.</p>` : ''}
+        ${r.combo && !e.up ? '<p>The Combo result has no sellers, so it\'s valued as the ordinary item.</p>' : ''}
+        ${e.up && e.up.kind === 'last' ? `<p>⚠ The Combo result has no sellers now; using its last price, from ${ago(e.up.seen)}.</p>` : ''}
+        ${e.base && e.base.kind === 'last' ? `<p>⚠ No sellers now; using the last price, from ${ago(e.base.seen)}.</p>` : ''}
       </div></div></div>`;
 }
 function saleBlock(e){
   const s = e.sale; if(s.per == null && s.hours == null) return '';
   const r = e.r, up = r.combo ? item(r.combo.p)[0] : null, cpi = e.cpi;
   const outLine = (k, name, v, trashed) => v == null || cpi == null ? '' :
-    `<dt>${esc(name)} on its own</dt><dd class="${trashed ? 'loss' : v - cpi >= 0 ? 'gain' : 'loss'}">${kina(v - cpi)} / listing<br>${isFinite(slotHours(k)) ? kina(perSlotHour(v - cpi, k)) + ' / slot-hour' : 'no sales in a week'}${trashed ? '<span class="muted">trashed</span>' : ''}</dd>`;
+    `<dt>${esc(name)} on its own</dt><dd class="${trashed ? 'loss' : v - cpi >= 0 ? 'gain' : 'loss'}">${kina(v - cpi)} / listing<br>${kina(perSlotHour(v - cpi, k))} / slot-hour${noSales(k) ? '<br><span class="warn-text">⚠ no sales in a week</span>' : ''}${trashed ? '<span class="muted">trashed</span>' : ''}</dd>`;
   const bNet = e.base ? net(e.base.v) : null, uNet = e.up ? net(e.up.v) : null;
   return `<h3 style="margin-top:14px">Selling</h3>
     <dl class="kv">
       ${S.slots && isGear(r.p) ? outLine(r.p, item(r.p)[0], bNet, e.flags.includes('trashB')) + (r.combo ? outLine(r.combo.p, up, uNet, e.flags.includes('trashU')) : '') : ''}
       <dt>Profit per ${esc(item(s.k)[0])} listed${(e.flags.includes('trashB') || e.flags.includes('trashU')) ? ' (covers the trashed ones)' : ''}</dt><dd class="${s.per >= 0 ? 'gain' : 'loss'}">${kina(s.per)}</dd>
-      <dt>Sells in</dt><dd>${fmtHours(s.hours)}${s.v != null ? ` <span class="muted">(~${fmtQty(s.v)} sold a day)</span>` : ' <span class="muted">(unknown)</span>'}</dd>
+      <dt>Sells in</dt><dd>${fmtHours(s.hours, s.k)}${s.v != null ? ` <span class="muted">(~${fmtQty(s.v)} sold a day)</span>` : ' <span class="muted">(unknown)</span>'}</dd>
       ${s.gear ? `<dt>Profit per slot-hour</dt><dd class="${s.worth ? 'gain' : 'loss'}">${s.ph == null ? '–' : isFinite(s.hours) ? kina(s.ph) : '–'} <span class="muted">(need ${kina(S.slotRate)})</span></dd>` : `<dt>Stacks</dt><dd>yes</dd>`}
     </dl>
 `;
@@ -1046,7 +1052,7 @@ function planBlock(e){
       <dt>Bad-luck profit <span class="muted">(worst 1 in ${worse})</span></dt><dd class="${P.bad >= 0 ? 'gain' : 'loss'}">${kina(P.bad)}</dd>
       <dt>Your Kina after a bad-luck run</dt><dd>${kina(S.budget + P.bad)}</dd>
       <dt>Chance of profit</dt><dd class="${P.pLoss != null && 1 - P.pLoss >= S.pwin / 100 ? 'gain' : ''}">${P.pLoss == null ? '–' : P.pLoss < 0.001 ? '>99.9%' : ((1 - P.pLoss) * 100).toFixed(1) + '%'}</dd>
-      ${e.sale.gear && e.sale.hours != null && e.s.p ? `<dt>Time to sell it all</dt><dd>${isFinite(e.sale.hours) ? fmtHours(Math.max(e.sale.hours, P.n * e.sold * e.sale.hours / 10)).replace('about ', '~') : 'no sales in a week'}</dd>` : ''}
+      ${e.sale.gear && e.sale.hours != null && e.s.p ? `<dt>Time to sell it all</dt><dd>${noSales(e.sale.k) ? '⚠ no sales in a week' : fmtHours(Math.max(e.sale.hours, P.n * e.sold * e.sale.hours / 10)).replace('about ', '~')}</dd>` : ''}
       ${!P.safe && P.needKina ? `<dt class="total">Kina for a safe run</dt><dd class="total">about ${kina(P.needKina)}</dd>` : ''}
     </dl>
     <div class="notes" style="margin-top:8px"><p>${P.safe ? 'Ends in profit even with bad luck.' : e.ppa > 0 ? `Profitable on average, but bad luck could leave you ${kina(-P.bad)} down.` : 'Loses Kina on average.'}</p></div>`;
