@@ -1,10 +1,12 @@
 // Daeva Forge on Cloudflare: the files in dist/ are served as static assets (they never reach this code);
-// the one dynamic route, POST /api/feedback, emails a visitor's message to the maintainer.
+// the one dynamic route, POST /api/feedback, emails a visitor's message to the maintainer. A cron trigger
+// starts the hourly price run on GitHub right after Aion2Market's capture.
 import { EmailMessage } from 'cloudflare:email';
 
 const FROM = 'feedback@daevaforge.com';       // Email Routing must be on for daevaforge.com
 const SHOWN_TO = 'mawreez@daevaforge.com';     // the To header Gmail sees, so it replies from this address
 const KINDS = ['Bug', 'Idea', 'Other'];
+const REPO = 'maurits-cmyk/daeva-forge';
 
 // The inbox is the Worker secret FEEDBACK_TO (kept out of this public repo); it must be a verified
 // Email Routing destination address, the only kind the send_email binding can deliver to.
@@ -14,6 +16,15 @@ export default {
       return req.method === 'POST' ? feedback(req, env) : json({error: 'Use POST.'}, 405);
     }
     return env.ASSETS.fetch(req);
+  },
+  // GH_DISPATCH: a fine-grained GitHub token for this repository only, with Actions read and write
+  async scheduled(event, env) {
+    if (!env.GH_DISPATCH) return;
+    const res = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/prices.yml/dispatches`, {
+      method: 'POST', body: JSON.stringify({ref: 'main'}),
+      headers: {Authorization: `Bearer ${env.GH_DISPATCH}`, Accept: 'application/vnd.github+json', 'User-Agent': 'daeva-forge-worker'},
+    });
+    if (!res.ok) throw new Error(`GitHub answered ${res.status}: ${await res.text()}`);  // shows in the Worker's logs
   },
 };
 

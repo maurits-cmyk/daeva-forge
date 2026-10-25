@@ -1284,7 +1284,7 @@ async function loadLive(id){
   indexRecipes(); statusBar(); render();
   pollPrices(id);
 }
-// Hosted site: prices/<server>.json is rebuilt every hour (about :20) together with that server's sale speeds
+// Hosted site: prices/<server>.json is rebuilt every hour (from :15, live by about :30), plus each server's weekly sale speeds
 async function loadHosted(id){
   const s = S.data.servers.find(x => x[0] === id);
   $('#status').innerHTML = '<span class="pill">Fetching prices…</span>';
@@ -1301,11 +1301,11 @@ async function loadHosted(id){
 }
 const loadPrices = id => (LIVE ? loadLive : loadHosted)(id);
 // Aion2Market takes new prices once an hour (a few minutes past the hour, per server), so look again ~10 minutes
-// after its next capture (the hosted copy ~18, after the hourly job has deployed); retry in 5 minutes if it's late.
+// after its next capture (the hosted copy ~22, after the hourly job has deployed); retry in 5 minutes if it's late.
 let pollTimer;
 function pollPrices(id){
   clearTimeout(pollTimer);
-  const next = S.liveOk && S.pricesAt ? new Date(S.pricesAt).getTime() + (LIVE ? 70 : 78) * 6e4 : 0;
+  const next = S.liveOk && S.pricesAt ? new Date(S.pricesAt).getTime() + (LIVE ? 70 : 82) * 6e4 : 0;
   const wait = next - Date.now() > 6e4 ? next - Date.now() : 5 * 6e4;
   pollTimer = setTimeout(function again(){
     // don't redraw under someone typing a price; try again in a minute

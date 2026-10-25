@@ -3,9 +3,10 @@
   python hosting.py build    # assemble dist/: the two pages, data.json, icons, sale speeds, robots.txt, sitemap
   python hosting.py prices   # current asks for the servers in site/servers.txt -> dist/prices/ (hourly; or give ids)
   python hosting.py speeds   # sale speeds for today's seventh of the servers -> site/speeds/ (daily; committed)
+  python hosting.py due      # exit 0 if the live prices are 45+ minutes old (the fallback run is needed)
 
-GitHub Actions runs `build` + `prices` and deploys dist/ every hour, about 10 minutes after Aion2Market
-captures its prices; `speeds` runs once a day, so every server's sale speeds refresh weekly. Recipes, success
+GitHub Actions runs `build` + `prices` and deploys dist/ every hour, started at :15 by the Worker's cron trigger
+(Aion2Market captures at about :07-:11), with GitHub's own late schedule as a fallback; `speeds` runs once a day, so every server's sale speeds refresh weekly. Recipes, success
 tables and supply requests change rarely: rebuild app/data.json locally with build_data.py and commit it.
 
 Aion2Market hasn't answered our request (2026-10-20), so we keep our load on it low and identifiable: one
@@ -149,6 +150,16 @@ def prices():
         sys.exit('no prices fetched')
 
 
+def due():
+    """The fallback run is needed only when the timed one didn't deploy within the last 45 minutes."""
+    try:
+        fetched = json.loads(published('prices/index.json'))['fetched']
+    except Exception:
+        return
+    if (datetime.now(timezone.utc) - datetime.fromisoformat(fetched)).total_seconds() < 45 * 60:
+        sys.exit(f'live prices fetched {fetched}: not needed')
+
+
 def speeds():
     """Listings that disappeared per day over the last week (sales plus cancellations), crafted products only.
     Each day covers a seventh of the servers, so every server refreshes weekly; pass server ids to run those instead."""
@@ -174,4 +185,4 @@ def speeds():
 
 if __name__ == '__main__':
     cmd = sys.argv[1] if len(sys.argv) > 1 else ''
-    {'build': build, 'prices': prices, 'speeds': speeds}.get(cmd, lambda: sys.exit(__doc__))()
+    {'build': build, 'prices': prices, 'speeds': speeds, 'due': due}.get(cmd, lambda: sys.exit(__doc__))()

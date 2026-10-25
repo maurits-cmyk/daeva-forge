@@ -1,13 +1,23 @@
 name: Hourly prices
 on:
+  workflow_dispatch:  # the Worker's cron trigger, every hour at :15, right after Aion2Market's capture
   schedule:
-    - cron: '20 * * * *'  # Aion2Market captures prices a few minutes past each hour
-  workflow_dispatch:
+    - cron: '20 * * * *'  # fallback; GitHub starts it 25-50 minutes late, and it skips an hour the Worker covered
   push:  # deploy page changes right away
     branches: [main]
 concurrency: deploy
 jobs:
+  due:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.due.outputs.run }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: due
+        run: echo "run=$([ '${{ github.event_name }}' != schedule ] || python3 hosting.py due && echo true || echo false)" >> "$GITHUB_OUTPUT"
   deploy:
+    needs: due
+    if: needs.due.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 40  # 106 servers 4 s apart; hosting.py stops fetching after 20 min
     steps:
