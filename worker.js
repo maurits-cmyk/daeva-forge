@@ -19,7 +19,7 @@ export default {
   },
   // GH_DISPATCH: a fine-grained GitHub token for this repository only, with Actions read and write
   async scheduled(event, env) {
-    if (!env.GH_DISPATCH) return;
+    if (!env.GH_DISPATCH) throw new Error('GH_DISPATCH is not set: the hourly price run waits for GitHub's late schedule');
     const res = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/prices.yml/dispatches`, {
       method: 'POST', body: JSON.stringify({ref: 'main'}),
       headers: {Authorization: `Bearer ${env.GH_DISPATCH}`, Accept: 'application/vnd.github+json', 'User-Agent': 'daeva-forge-worker'},

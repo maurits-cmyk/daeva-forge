@@ -3,7 +3,7 @@
   python hosting.py build    # assemble dist/: the two pages, data.json, icons, sale speeds, robots.txt, sitemap
   python hosting.py prices   # current asks for the servers in site/servers.txt -> dist/prices/ (hourly; or give ids)
   python hosting.py speeds   # sale speeds for today's seventh of the servers -> site/speeds/ (daily; committed)
-  python hosting.py due      # exit 0 if the live prices are 45+ minutes old (the fallback run is needed)
+  python hosting.py due      # exit 0 if the live prices predate this hour's capture (the fallback run is needed)
 
 GitHub Actions runs `build` + `prices` and deploys dist/ every hour, started at :15 by the Worker's cron trigger
 (Aion2Market captures at about :07-:11), with GitHub's own late schedule as a fallback; `speeds` runs once a day, so every server's sale speeds refresh weekly. Recipes, success
@@ -151,13 +151,16 @@ def prices():
 
 
 def due():
-    """The fallback run is needed only when the timed one didn't deploy within the last 45 minutes."""
+    """The fallback run is needed only when the live prices were fetched before Aion2Market's latest capture
+    (about :07-:11 each hour), i.e. the timed run didn't happen this hour."""
+    from datetime import timedelta
     try:
-        fetched = json.loads(published('prices/index.json'))['fetched']
+        fetched = datetime.fromisoformat(json.loads(published('prices/index.json'))['fetched'])
     except Exception:
         return
-    if (datetime.now(timezone.utc) - datetime.fromisoformat(fetched)).total_seconds() < 45 * 60:
-        sys.exit(f'live prices fetched {fetched}: not needed')
+    capture = (datetime.now(timezone.utc) - timedelta(minutes=12)).replace(minute=12, second=0, microsecond=0)
+    if fetched >= capture:
+        sys.exit(f'live prices fetched {fetched:%H:%M}, after the {capture:%H:%M} capture: not needed')
 
 
 def speeds():
