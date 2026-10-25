@@ -3,8 +3,7 @@
   "name": "daeva-forge",
   "main": "worker.js",
   "compatibility_date": "2026-10-01",
-  "workers_dev": false,
-  "observability": { "enabled": true },  // Workers Logs: the cron trigger's errors, kept a few days (dashboard: Observability)  // only daevaforge.com: no duplicate site on *.workers.dev
+  "workers_dev": false,  // only daevaforge.com: no duplicate site on *.workers.dev
   "assets": { "directory": "./dist", "binding": "ASSETS" },
   // feedback mail goes to the Worker secret FEEDBACK_TO, which must be a verified Email Routing destination
   "send_email": [{ "name": "FEEDBACK" }],
