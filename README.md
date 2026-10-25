@@ -8,8 +8,8 @@ Not affiliated with, endorsed or sponsored by NCSOFT.
 - `app/index.html` is the whole page; `app/data.json` holds recipes, success chances, supply requests and vendor prices.
   Prices come separately: hourly files on the site, or `app/snapshot.json` (not committed) when run locally.
 - Two pages, one app: `/` (specific items) and `/profit` (crafting in bulk for profit); the address picks the mode.
-- `hosting.py build` + `hosting.py prices` assemble `dist/`; GitHub Actions runs them every hour (about 10 minutes
-  after Aion2Market captures its prices) and deploys `dist/` to a Cloudflare Worker (`wrangler.jsonc`).
+- `hosting.py build` + `hosting.py prices` assemble `dist/`; GitHub Actions runs them every hour, started at :15
+  by the Worker's cron trigger, just after Aion2Market captures its prices and deploys `dist/` to a Cloudflare Worker (`wrangler.jsonc`).
   Prices cover every server (`site/servers.txt`), spaced out; a server that can't be fetched keeps its last copy.
 - `hosting.py speeds` recomputes sale speeds for a seventh of the servers each day (each server weekly) into `site/speeds/`.
 - `worker.js` handles the feedback form (POST /api/feedback) and emails it via Cloudflare Email Routing; everything else is static.

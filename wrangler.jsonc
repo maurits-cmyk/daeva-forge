@@ -6,5 +6,8 @@
   "workers_dev": false,  // only daevaforge.com: no duplicate site on *.workers.dev
   "assets": { "directory": "./dist", "binding": "ASSETS" },
   // feedback mail goes to the Worker secret FEEDBACK_TO, which must be a verified Email Routing destination
-  "send_email": [{ "name": "FEEDBACK" }]
+  "send_email": [{ "name": "FEEDBACK" }],
+  // starts the hourly price run (worker.js scheduled): Aion2Market captures at about :07-:11, and GitHub's own
+  // schedule runs 25-50 minutes late
+  "triggers": { "crons": ["15 * * * *"] }
 }
