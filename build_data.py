@@ -45,6 +45,26 @@ def refresh_recipes():
     raise SystemExit('recipe chunk not found on aion2hub; the site layout changed')
 
 
+# Transfer crafting (recipe level 0): the Dragon Lord gear chain past the ordinary craft, e.g. Star Dragon Lord Mace
+# (item level 62) -> Splendent Star (70) -> Dark (78) -> Splendent Dark (86) -> Ebony (94) -> Splendent Ebony (102),
+# +8 per step. Each step uses up the previous item (the "transfer material", which aion2hub leaves out), always
+# succeeds and makes Soul Bound gear; Dark and Ebony also have a 25% Combo that skips the next step. The Splendent
+# Star from the ordinary craft's Combo works as transfer material too (the user, in-game, 2026-10-31).
+TRANSFER_STEPS = {'Combo_005': (1, '_001'), '_007': (2, 'Combo_001'), 'Combo_006': (3, '_007'),
+                  '_008': (4, 'Combo_006'), 'Combo_007': (5, '_008')}  # this item: (step, the previous item)
+
+
+def add_transfer(rec, code, key):
+    m = re.match(r'(.*craftdraconic)((?:Combo)?_\d{3})([a-z]_\w+)$', code)
+    if rec['ml'] != 0 or not m or m.group(2) not in TRANSFER_STEPS:
+        return
+    step, prev = TRANSFER_STEPS[m.group(2)]
+    rec['tr'] = step
+    rec['c'].insert(0, [key(m.group(1) + prev + m.group(3)), 1])
+    if step == 1:  # also a way to make the tradeable Splendent Star that the next step takes
+        rec['alias'] = key(m.group(1) + 'Combo_001' + m.group(3))
+
+
 def main():
     args = sys.argv[1:]
     server_id = int(args[args.index('--server') + 1]) if '--server' in args else 12101
@@ -63,6 +83,7 @@ def main():
                'race': r['race'], 'fee': r['fee'],
                'combo': {'p': key(r['combo']['p']), 'pct': r['combo']['pct']} if r.get('combo') else None,
                'c': [[key(c['i']), c['q']] for c in r['c']]}
+        add_transfer(rec, r['p'], key)
         recipes.append(rec)
         used.update([rec['p']] + [c[0] for c in rec['c']] + ([rec['combo']['p']] if rec['combo'] else []))
     by_key = {v['i']: v for v in items.values() if v.get('i')}
