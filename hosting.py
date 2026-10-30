@@ -101,7 +101,8 @@ def build():
         shutil.copy(APP / f, DIST / f)
     if (SITE / 'speeds').exists():
         shutil.copytree(SITE / 'speeds', DIST / 'speeds')
-    (DIST / 'robots.txt').write_text(f'User-agent: *\nAllow: /\nSitemap: {SITE_URL}/sitemap.xml\n')
+    # /api/feedback is the feedback form's endpoint, not a page (Search Console listed it as a 405)
+    (DIST / 'robots.txt').write_text(f'User-agent: *\nDisallow: /api/\nAllow: /\nSitemap: {SITE_URL}/sitemap.xml\n')
     day = datetime.now(timezone.utc).date().isoformat()
     (DIST / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
                                       + ''.join(f'  <url><loc>{SITE_URL}{p["path"]}</loc><lastmod>{day}</lastmod></url>\n' for p in PAGES.values())
