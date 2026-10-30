@@ -150,4 +150,4 @@ if __name__ == '__main__':
         print(f"Tracking {cfg['name']} on {cfg['serverName']} ({region})")
     h = record()
     r = h['readings'][-1]
-    print(f"{r['name']}: {r['cp']:,} CP, item level {r['itemLevel']} — {len(h['readings'])} reading(s), last change: {'; '.join(r['changes'])}")
+    print(f"{r['name']}: {r['cp']:,} CP, item level {r['itemLevel']}; {len(h['readings'])} reading(s), last change: {'; '.join(r['changes'])}")
