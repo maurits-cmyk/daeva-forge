@@ -832,7 +832,7 @@ const colsKey = () => ({exp: 'colsExp', single: 'colsSingle'})[S.mode] || 'cols'
 const defaultSort = m => m === 'exp' ? (S.xpStrategy === 'fast' ? {k:'xpa', dir:-1} : {k:'kxp', dir:1}) : m === 'single' ? {k:'gr', dir:-1} : {k:'bad', dir:-1};
 const GRADE_RANK = {Common: 0, Rare: 1, Legend: 2, Epic: 3, Unique: 4};
 const lvText = r => r.tr ? 'transfer' : 'Lv ' + r.ml;
-const levelOf = r => r.tr ? 55 + r.tr : r.ml;  // transfer steps sort above the ordinary Dragon Lord craft (55)
+const levelOf = r => r.tr ? 62 + 8 * r.tr : r.ml;  // transfer steps have no level requirement: sort by item level (70 up to 102)
 const showCol = c => (!c.exp || S.mode === 'exp') && (!c.single || S.mode === 'single') && (!c.plan || S.mode === 'profit');
 const costOfOne = e => e.cost != null && e.s.p ? e.cost / (e.s.p * e.r.y) : null;
 let HIDDEN_COLS = 0, HIDDEN_BY = new Map();  // HIDDEN_BY: filter -> search matches it hides
