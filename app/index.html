@@ -166,6 +166,10 @@ tr.sheet>td{background:rgba(5,6,9,.55);padding:0;border-bottom:1px solid var(--a
 .sheetin tr.tree:not(.d0){background:rgba(0,0,0,.18)}
 .tname{display:inline-flex;align-items:flex-start;gap:4px}
 .fold{font:inherit;font-size:13px;line-height:1.4;border:0;background:transparent;color:var(--cyan);cursor:pointer;padding:0 2px;width:16px}
+.sheetin tr.foldable{cursor:pointer}
+.sheetin tr.foldable:hover .fold{color:#fff}
+.foldbar{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
+.foldbar .chip{margin-left:0}
 .fold-sp{display:inline-block;width:16px;flex:0 0 16px}
 .sheetin tr.tnote td{font-size:12px;color:var(--muted);padding-block:3px 4px;border-bottom:1px solid var(--line)}
 .sheetin tr.tnote + tr.tree td, .sheetin tr.tree:has(+ tr.tnote) td{border-bottom:0}
@@ -960,7 +964,10 @@ function summaryText(rows){
 }
 // Materials as a tree: a material you craft opens into its own materials, scaled to one attempt of the
 // recipe at the top. Only top-level costs add up to the total; nested ones show what the crafted cost is made of.
-const FOLD = new Set();
+// Folding: a choice is per item and remembered. Without one, a small tree is fully open and a big one opens
+// only the crafted materials that carry a large share of the cost.
+const TREE_FOLD = store.get('treeFold', {});  // item key -> true folded / false open
+const SMALL_TREE = 15, BIG_SHARE = 0.2;
 const fmtQty = q => q >= 100 ? Math.round(q).toLocaleString('en-US') : (+q.toFixed(q >= 10 ? 1 : 2)).toString();
 function treeRows(k, qty, depth, path, stack, ctx){
   const u = unitCost(k, stack), nm = item(k), id = path + '/' + k;
@@ -977,15 +984,15 @@ function treeRows(k, qty, depth, path, stack, ctx){
     : `<button type="button" class="opt" data-src="${k}" data-v="buy" aria-pressed="${how === 'buy'}"><span>Buy</span><b>${kina(u.buy.v)}</b><span class="sub">${buyLabel}</span></button>`;
   const craftOpt = u.craft ? `<button type="button" class="opt" data-src="${k}" data-v="craft" aria-pressed="${how === 'craft'}"><span>Craft</span><b>${u.craft.free ? 'free' : kina(u.craft.v)}</b><span class="sub">${esc(pl(u.craft.r.prof))} ${lvText(u.craft.r)}</span></button>` : '';
   const morphOpt = u.morph ? `<button type="button" class="opt" data-src="${k}" data-v="morph" aria-pressed="${how === 'morph'}"><span>Morph</span><b>${kina(u.morph.v)}</b><span class="sub">from ${esc(item(u.morph.from)[0])}</span></button>` : '';
-  const open = how === 'craft' && depth < 6 && !stack.has(String(k));
-  const folded = FOLD.has(id);
-  const caret = open ? `<button type="button" class="fold" data-fold="${esc(id)}" aria-expanded="${!folded}" aria-label="${folded ? 'Show' : 'Hide'} what ${esc(nm[0])} is made of">${folded ? '▸' : '▾'}</button>` : '<span class="fold-sp"></span>';
+  const open = how === 'craft' && depth < 10 && !stack.has(String(k));
+  const fold = folded => open ? ` data-fold="${esc(String(k))}" data-folded="${folded ? 1 : 0}"` : '';
+  const caret = folded => open ? `<button type="button" class="fold"${fold(folded)} aria-expanded="${!folded}" aria-label="${folded ? 'Show' : 'Hide'} what ${esc(nm[0])} is made of">${folded ? '▸' : '▾'}</button>` : '<span class="fold-sp"></span>';
   let cost = u.pick ? need * u.pick.v : null;
   const qtyCell = fmtQty(need) + (need < qty ? `<span class="sub">of ${fmtQty(qty)}</span>` : '');
   const ownInput = `<input class="owned" type="number" min="0" step="1" value="${+S.owned[String(k)] || 0}" data-owned="${k}" aria-label="How many ${esc(nm[0])} you own">`;
   const ownCell = ctx ? `<td class="num own">${ownInput}</td>` : '';
   const ownInline = ctx ? `<label class="owninline">Owned${ownInput}</label>` : '';
-  let sub = '', note = '';
+  let kids = null, note = '';
   if(open){
     const c = u.craft, L = c.left, att = need * c.att;
     // leftovers named by kind, not by item: the row above already names it
@@ -997,18 +1004,31 @@ function treeRows(k, qty, depth, path, stack, ctx){
       .concat(c.free ? ['leftovers pay for it'] : []).join(' · ');
     const st = new Set(stack); st.add(String(k));
     const saved0 = ctx ? ctx.saved : 0;
-    sub = matsOf(c.r, st).map(([ck, cq]) => treeRows(ck, att * cq, depth + 1, id, st, ctx)).join('');
+    kids = matsOf(c.r, st).map(([ck, cq]) => treeRows(ck, att * cq, depth + 1, id, st, ctx));
     if(ctx && cost != null) cost -= ctx.saved - saved0;   // owned materials in this branch
   }
   if(ctx && depth === 0 && cost != null) ctx.sum += cost;
-  let html = `<tr class="tree d${Math.min(depth, 6)}"><td><span class="tname" style="--d:${depth}">${caret}<span><span class="qinline">${fmtQty(need)} × </span><span class="g-${esc(nm[1] || 'Common')}">${esc(nm[0])}</span>${ownInline}</span></span></td><td class="num q">${qtyCell}</td>
+  const row = folded => `<tr class="tree d${Math.min(depth, 6)}${open ? ' foldable' : ''}"${fold(folded)}><td><span class="tname" style="--d:${depth}">${caret(folded)}<span><span class="qinline">${fmtQty(need)} × </span><span class="g-${esc(nm[1] || 'Common')}">${esc(nm[0])}</span>${ownInline}</span></span></td><td class="num q">${qtyCell}</td>
     <td><div class="opts" role="group" aria-label="Buy, craft or morph ${esc(nm[0])}">${buyOpt}${craftOpt}${morphOpt}${chosen !== 'cheapest' && chosen !== S.sourcing ? '<button type="button" class="chip" data-src="' + k + '" data-v="">reset</button>' : ''}</div></td>
-    ${ownCell}<td class="num${depth ? ' muted' : ''}">${cost == null ? '–' : kina(cost)}</td></tr>`;
-  if(open){
-    html += `<tr class="tnote"><td colspan="${ctx ? 5 : 4}"><span class="tindent" style="--d:${depth}">${note}</span></td></tr>`;
-    if(!folded) html += sub;
-  }
-  return html;
+    ${ownCell}<td class="num${depth ? ' muted' : ''}">${cost == null ? '–' : kina(cost)}</td></tr>`
+    + (open ? `<tr class="tnote foldable"${fold(folded)}><td colspan="${ctx ? 5 : 4}"><span class="tindent" style="--d:${depth}">${note}${folded ? ` · ${kids.length} material${kids.length === 1 ? '' : 's'} hidden` : ''}</span></td></tr>` : '');
+  return {k: String(k), row, kids, cost, size: 1 + (kids ? kids.reduce((t, n) => t + n.size, 0) : 0)};
+}
+function treeHtml(nodes){
+  const total = nodes.reduce((t, n) => t + (n.cost || 0), 0), big = nodes.reduce((t, n) => t + n.size, 0) > SMALL_TREE;
+  const emit = n => {
+    if(!n.kids) return n.row(false);
+    const folded = TREE_FOLD[n.k] ?? (big && !(total > 0 && n.cost >= BIG_SHARE * total));
+    return n.row(folded) + (folded ? '' : n.kids.map(emit).join(''));
+  };
+  return nodes.map(emit).join('');
+}
+function foldBar(nodes){
+  const keys = new Set(), walk = ns => ns.forEach(n => { if(n.kids){ keys.add(n.k); walk(n.kids) } });
+  walk(nodes);
+  if(!keys.size) return '';
+  const ks = esc([...keys].join(',')), b = (v, t) => `<button type="button" class="chip" data-foldall="${v}" data-keys="${ks}">${t}</button>`;
+  return `<div class="foldbar">${b('open', 'open all')}${b('fold', 'fold all')}${[...keys].some(k => k in TREE_FOLD) ? b('auto', 'default folding') : ''}</div>`;
 }
 function expBlock(e){
   if(S.mode !== 'exp') return '';
@@ -1035,23 +1055,23 @@ function transferNote(r, skip){
 function singleSheet(e){
   const r = e.r, s = e.s, A = s.p ? 1 / s.p : 1;   // expected attempts for one success
   const ctx = {alloc: new Map(), sum: 0, saved: 0};
-  const lines = matsOf(r, new Set([String(r.p)])).map(([k, q]) => treeRows(k, q * A, 0, String(r.id), new Set([String(r.p)]), ctx)).join('');
+  const nodes = matsOf(r, new Set([String(r.p)])).map(([k, q]) => treeRows(k, q * A, 0, String(r.id), new Set([String(r.p)]), ctx)), lines = treeHtml(nodes);
   const fee = (r.fee || 0) * A, owns = Object.keys(S.owned).length > 0, skip = skipOf(r, new Set([String(r.p)]));
   return `<div class="sheetin single"><div>
     <h3>Materials for one ${esc(e.name)}${r.y > 1 ? ' (one craft makes ' + r.y + ')' : ''}</h3>
     <p class="notes" style="margin:0 0 10px">${s.locked ? `<span class="loss">Needs ${esc(pl(r.prof))} Lv ${r.ml}; you're at ${S.mastery[r.prof] || 1}.</span> ` : ''}${r.tr ? transferNote(r, skip) : s.p ? `${pct(s.p)} success, so about ${fmtQty(A)} attempt${A === 1 ? '' : 's'}.` : 'Success chance unknown: quantities are for one attempt.'}</p>
-    <div class="mtable"><table><thead><tr><th>Material</th><th class="num q">Qty</th><th>Buy or craft (each)</th><th class="num own">Owned</th><th class="num">Cost</th></tr></thead>
+    ${foldBar(nodes)}<div class="mtable"><table><thead><tr><th>Material</th><th class="num q">Qty</th><th>Buy or craft (each)</th><th class="num own">Owned</th><th class="num">Cost</th></tr></thead>
     <tbody>${lines}<tr><td colspan="4"><b>Expected cost</b>${fee ? ' (incl. fees ' + kina(fee) + ')' : ''}${owns ? ' <button type="button" class="chip" data-clearowned>clear owned</button>' : ''}</td><td class="num"><b>${kina(ctx.sum + fee)}</b></td></tr></tbody></table></div>
     ${e.missing.length ? `<div class="notes" style="margin-top:10px"><p class="loss">No price for ${e.missing.map(k => esc(item(k)[0])).join(', ')}. Enter one to complete the cost.</p></div>` : ''}
   </div></div>`;
 }
 function sheet(e){
   const r = e.r, s = e.s, c = r.combo ? r.combo.pct/100 : 0;
-  const lines = r.c.map(([k, q]) => treeRows(k, q, 0, String(r.id), new Set([String(r.p)]))).join('');
+  const nodes = r.c.map(([k, q]) => treeRows(k, q, 0, String(r.id), new Set([String(r.p)]))), lines = treeHtml(nodes);
   const bp = e.base ? net(e.base.v) : null, up = e.up ? net(e.up.v) : null;
   return `<div class="sheetin">
     <div><h3>Materials per attempt</h3>
-      <div class="mtable"><table><thead><tr><th>Material</th><th class="num q">Qty</th><th>Buy or craft (each)</th><th class="num">Cost</th></tr></thead>
+      ${foldBar(nodes)}<div class="mtable"><table><thead><tr><th>Material</th><th class="num q">Qty</th><th>Buy or craft (each)</th><th class="num">Cost</th></tr></thead>
       <tbody>${lines}<tr><td colspan="3"><b>Total per attempt</b>${r.fee ? ' (incl. fee ' + kina(r.fee) + ')' : ''}</td><td class="num"><b>${kina(e.cost)}</b></td></tr></tbody></table></div>
       <div class="notes" style="margin-top:10px">
         ${e.missing.length ? `<p class="loss">No price for ${e.missing.map(k => esc(item(k)[0])).join(', ')}. Enter one to complete the cost.</p>` : ''}
@@ -1281,8 +1301,14 @@ function buildSettings(){
   document.addEventListener('keydown', ev => { if(ev.key === 'Escape' && !pop.hidden){ openPop(false); btn.focus() } });
   const rowsEl = $('#rows');
   rowsEl.addEventListener('click', ev => {
-    const fold = ev.target.closest('[data-fold]');
-    if(fold){ const id = fold.dataset.fold; FOLD.has(id) ? FOLD.delete(id) : FOLD.add(id); render(); return }
+    const all = ev.target.closest('[data-foldall]');
+    if(all){
+      for(const k of all.dataset.keys.split(',')){ if(all.dataset.foldall === 'auto') delete TREE_FOLD[k]; else TREE_FOLD[k] = all.dataset.foldall === 'fold' }
+      store.set('treeFold', TREE_FOLD); render(); return
+    }
+    // a tree row folds wherever it's clicked, except on its buttons and inputs
+    const fold = !ev.target.closest('input, label, a, button:not(.fold)') && ev.target.closest('[data-fold]');
+    if(fold){ TREE_FOLD[fold.dataset.fold] = fold.dataset.folded !== '1'; store.set('treeFold', TREE_FOLD); render(); return }
     const cx = ev.target.closest('[data-clearxp]');
     if(cx){ delete S.xpOwn[cx.dataset.clearxp]; store.set('xpOwn', S.xpOwn); xpOwnCount(); render(); return }
     if(ev.target.closest('[data-clearowned]')){ S.owned = {}; store.set('owned', S.owned); render(); return }
