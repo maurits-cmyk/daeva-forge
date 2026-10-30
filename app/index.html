@@ -530,6 +530,7 @@ const net = v => v * (1 - S.tax/100);
 const tableOf = r => { const o = (S.data.official || {})[r.id]; if(o) return o; const t = S.data.rates[r.p]; return t && (t[race() === 'Light' ? 'light' : 'dark'] || t.both) };
 let FALLBACK = [];
 function successOf(r){
+  if(r.tr) return {p:1, diff:0, locked:false};  // transfer crafting always succeeds and needs no mastery
   let tab = tableOf(r), est = false;
   const diff = (S.mastery[r.prof] || 1) - r.ml;
   if(!tab && r.ml > 0){
@@ -565,14 +566,16 @@ function indexMorphs(){
 }
 const QUEST_TOOL = /^(Novice|Professional) .+ \(Bound\)$/;  // profession tools made once for a quest
 function indexRecipes(){
-  // level 0 = transfer crafting (always succeeds, bound gear, materials shown in-game): not worth listing
-  RECIPES = S.data.recipes.filter(r => r.race === race() && r.ml > 0 && !QUEST_TOOL.test(item(r.p)[0]));
+  // level 0: transfer crafting (r.tr = its step in the Dragon Lord chain, see build_data.py). It makes Soul Bound
+  // gear, so it's only for planning a particular item; the other level-0 recipes aren't real crafts
+  RECIPES = S.data.recipes.filter(r => r.race === race() && (r.ml > 0 || (r.tr && S.mode === 'single')) && !QUEST_TOOL.test(item(r.p)[0]));
   FALLBACK = S.data.recipes.filter(r => r.ml > 0 && tableOf(r)).map(r => ({ml:r.ml, prof:r.prof, tab:tableOf(r)}));
   indexGroups(); indexMorphs();
   BY_OUT = {};
   for(const r of RECIPES){
     (BY_OUT[r.p] ||= []).push({r, as:'base'});
     if(r.combo) (BY_OUT[r.combo.p] ||= []).push({r, as:'combo'});
+    if(r.alias) (BY_OUT[r.alias] ||= []).push({r, as:'base'});  // a transferred Splendent Star does what a Combo one does
   }
 }
 let memo = new Map();
@@ -602,9 +605,21 @@ function unitCost(k, stack){
   if(stack.size === 0) memo.set(k, res);
   return res;
 }
+// A recipe's materials. Transfer steps after Dark and Ebony (which have a 25% Combo straight to the next step's
+// result): when that previous item is crafted, 1 time in 4 there's nothing left to transfer, so the step's own
+// materials count at 75%.
+function skipOf(r, stack){
+  if(!r.tr) return 0;
+  const via = unitCost(r.c[0][0], stack).pick;
+  return via && via.how === 'craft' && via.r.tr && via.r.combo && String(via.r.combo.p) === String(r.p) ? via.r.combo.pct / 100 : 0;
+}
+function matsOf(r, stack){
+  const skip = skipOf(r, stack);
+  return skip ? r.c.map(([k, q], i) => [k, i ? q * (1 - skip) : q]) : r.c;
+}
 function attemptCost(r, stack){
   let total = r.fee || 0, missing = [];
-  for(const [k, q] of r.c){
+  for(const [k, q] of matsOf(r, stack)){
     const u = unitCost(k, stack).pick;
     if(!u) { missing.push(k); continue; }
     total += q * u.v;
@@ -617,10 +632,11 @@ function craftUnit(r, as, stack){
   const a = attemptCost(r, stack);
   if(a.missing.length) return null;
   const c = r.combo ? r.combo.pct/100 : 0;
-  const share = as === 'base' ? 1 - c : c;
+  // a transfer step's Combo result is the next step up, so it serves wherever the ordinary one would
+  const share = as === 'base' ? (r.tr ? 1 : 1 - c) : c;
   if(share <= 0) return null;
   let credit = 0, left = null;
-  const otherKey = as === 'base' ? (r.combo ? r.combo.p : null) : r.p;
+  const otherKey = as === 'base' ? (r.combo && !r.tr ? r.combo.p : null) : r.p;
   if(S.credit && otherKey != null){
     left = leftoverValue(otherKey);
     credit = s.p * r.y * (as === 'base' ? c : 1 - c) * left.v;
@@ -815,6 +831,8 @@ const DEF_COLS = {profit: ['ppa', 'bad'], single: ['one'], exp: ['xpa', 'kxp', '
 const colsKey = () => ({exp: 'colsExp', single: 'colsSingle'})[S.mode] || 'cols', sortKey = () => ({exp: 'sortExp', single: 'sortSingleGrade'})[S.mode] || 'sort';
 const defaultSort = m => m === 'exp' ? (S.xpStrategy === 'fast' ? {k:'xpa', dir:-1} : {k:'kxp', dir:1}) : m === 'single' ? {k:'gr', dir:-1} : {k:'bad', dir:-1};
 const GRADE_RANK = {Common: 0, Rare: 1, Legend: 2, Epic: 3, Unique: 4};
+const lvText = r => r.tr ? 'transfer' : 'Lv ' + r.ml;
+const levelOf = r => r.tr ? 55 + r.tr : r.ml;  // transfer steps sort above the ordinary Dragon Lord craft (55)
 const showCol = c => (!c.exp || S.mode === 'exp') && (!c.single || S.mode === 'single') && (!c.plan || S.mode === 'profit');
 const costOfOne = e => e.cost != null && e.s.p ? e.cost / (e.s.p * e.r.y) : null;
 let HIDDEN_COLS = 0, HIDDEN_BY = new Map();  // HIDDEN_BY: filter -> search matches it hides
@@ -863,7 +881,7 @@ function renderRows(room = 99, pre = null, stacked = false){  // room: optional 
     return !by;
   });
   const {k, dir} = S.sort;
-  const val = e => k === 'gr' ? (GRADE_RANK[item(e.r.p)[1]] ?? 0) * 1000 + e.r.ml : k === 'ml' ? e.r.ml : k === 'name' ? e.name : k === 'prof' ? e.r.prof + String(e.r.ml).padStart(3,'0') : k === 'p' ? e.s.p : k === 'list' ? e.list
+  const val = e => k === 'gr' ? (GRADE_RANK[item(e.r.p)[1]] ?? 0) * 1000 + levelOf(e.r) : k === 'ml' ? levelOf(e.r) : k === 'name' ? e.name : k === 'prof' ? e.r.prof + String(e.r.ml).padStart(3,'0') : k === 'p' ? e.s.p : k === 'list' ? e.list
     : k === 'n' ? (e.plan ? e.plan.n : null) : k === 'bad' ? (e.plan ? e.plan.bad : null)
     : k === 'xpa' ? e.xp.xpa : k === 'kxp' ? e.xp.kxp : k === 'tgt' ? (e.xp.tgt ? e.xp.tgt.crafts : null)
     : k === 'one' ? costOfOne(e) : k === 'sale' ? e.sale.per : k === 'ph' ? (e.sale.ph != null && isFinite(e.sale.hours) ? e.sale.ph : null) : k === 'speed' ? (e.sale.hours == null ? null : isFinite(e.sale.hours) ? e.sale.hours : 1e9) : e[k];
@@ -890,7 +908,7 @@ function renderRows(room = 99, pre = null, stacked = false){  // room: optional 
     const showProf = vis.some(c => c.k === 'prof');
     const tone = v => v == null ? '' : v >= 0 ? 'gain' : 'loss';
     const cell = {
-      name: () => `<td><span class="name g-${esc(g)}">${esc(e.name)}</span>${e.r.y > 1 ? `<span class="chip">×${e.r.y}</span>` : ''}${chips}<span class="sub">${showProf ? '' : esc(pl(e.r.prof)) + ' ' + (e.s.locked && S.mode === 'single' ? `<span class="loss" title="Your ${esc(pl(e.r.prof))} mastery is ${S.mastery[e.r.prof] || 1}">Lv ${e.r.ml}</span>` : 'Lv ' + e.r.ml) + ' · '}${e.r.combo ? 'Combo ' + e.r.combo.pct + '%: ' + esc(item(e.r.combo.p)[0]) : 'no Combo upgrade'}</span></td>`,
+      name: () => `<td><span class="name g-${esc(g)}">${esc(e.name)}</span>${e.r.y > 1 ? `<span class="chip">×${e.r.y}</span>` : ''}${chips}<span class="sub">${showProf ? '' : esc(pl(e.r.prof)) + ' ' + (e.s.locked && S.mode === 'single' ? `<span class="loss" title="Your ${esc(pl(e.r.prof))} mastery is ${S.mastery[e.r.prof] || 1}">Lv ${e.r.ml}</span>` : lvText(e.r)) + ' · '}${e.r.combo ? 'Combo ' + e.r.combo.pct + '%: ' + esc(item(e.r.combo.p)[0]) : 'no Combo upgrade'}</span></td>`,
       prof: () => `<td>${esc(pl(e.r.prof))}<span class="sub">Lv ${e.r.ml} · you ${S.mastery[e.r.prof] || 1}</span></td>`,
       p: () => `<td class="num">${pct(e.s.p)}</td>`,
       cost: () => `<td class="num">${kina(e.cost)}</td>`,
@@ -957,7 +975,7 @@ function treeRows(k, qty, depth, path, stack, ctx){
   const buyOpt = !u.buy ? `<span class="opt-own">${own}</span>`
     : u.buy.kind === 'manual' ? `<span class="opt-own">${own}<button type="button" class="chip" data-clear="${k}" aria-label="Clear your price for ${esc(nm[0])}">× clear</button></span>`
     : `<button type="button" class="opt" data-src="${k}" data-v="buy" aria-pressed="${how === 'buy'}"><span>Buy</span><b>${kina(u.buy.v)}</b><span class="sub">${buyLabel}</span></button>`;
-  const craftOpt = u.craft ? `<button type="button" class="opt" data-src="${k}" data-v="craft" aria-pressed="${how === 'craft'}"><span>Craft</span><b>${u.craft.free ? 'free' : kina(u.craft.v)}</b><span class="sub">${esc(pl(u.craft.r.prof))} Lv ${u.craft.r.ml}</span></button>` : '';
+  const craftOpt = u.craft ? `<button type="button" class="opt" data-src="${k}" data-v="craft" aria-pressed="${how === 'craft'}"><span>Craft</span><b>${u.craft.free ? 'free' : kina(u.craft.v)}</b><span class="sub">${esc(pl(u.craft.r.prof))} ${lvText(u.craft.r)}</span></button>` : '';
   const morphOpt = u.morph ? `<button type="button" class="opt" data-src="${k}" data-v="morph" aria-pressed="${how === 'morph'}"><span>Morph</span><b>${kina(u.morph.v)}</b><span class="sub">from ${esc(item(u.morph.from)[0])}</span></button>` : '';
   const open = how === 'craft' && depth < 6 && !stack.has(String(k));
   const folded = FOLD.has(id);
@@ -973,12 +991,13 @@ function treeRows(k, qty, depth, path, stack, ctx){
     // leftovers named by kind, not by item: the row above already names it
     const up = c.r.combo ? item(c.r.combo.p)[0] : '', splendent = /Splendent/.test(up);
     const kind = !L ? '' : c.r.combo && String(L.k) === String(c.r.combo.p) ? (splendent ? 'Splendent' : 'upgrade') : (splendent ? 'non-Splendent' : 'ordinary');
-    note = [`about ${fmtQty(att)} attempt${att === 1 ? '' : 's'}`]
+    const skip = skipOf(c.r, new Set([...stack, String(k)]));
+    note = [c.r.tr ? 'transfer, always succeeds' + (skip ? `; a Combo on the step before skips it ${Math.round(skip * 100)}% of the time` : '') : `about ${fmtQty(att)} attempt${att === 1 ? '' : 's'}`]
       .concat(!L ? [] : [`${kind} leftovers ${L.trashed ? 'trashed' : 'sold'}`])
       .concat(c.free ? ['leftovers pay for it'] : []).join(' · ');
     const st = new Set(stack); st.add(String(k));
     const saved0 = ctx ? ctx.saved : 0;
-    sub = c.r.c.map(([ck, cq]) => treeRows(ck, att * cq, depth + 1, id, st, ctx)).join('');
+    sub = matsOf(c.r, st).map(([ck, cq]) => treeRows(ck, att * cq, depth + 1, id, st, ctx)).join('');
     if(ctx && cost != null) cost -= ctx.saved - saved0;   // owned materials in this branch
   }
   if(ctx && depth === 0 && cost != null) ctx.sum += cost;
@@ -1007,14 +1026,20 @@ function expBlock(e){
     </dl>
     <div class="notes" style="margin-top:8px"><p>Seen a different number in-game? Enter the EXP of one normal success: ${own}${S.xpOwn[r.id] != null ? `<button type="button" class="chip" data-clearxp="${r.id}">× clear</button>` : ''}</p></div>`;
 }
+function transferNote(r, skip){
+  const prev = item(r.c[0][0])[0];
+  return `Transfer crafting: uses up ${/^[AEIOU]/.test(prev) ? 'an' : 'a'} ${esc(prev)}, always succeeds and makes Soul Bound gear.`
+    + (r.combo ? ` 1 time in ${Math.round(100 / r.combo.pct)} it makes the ${esc(item(r.combo.p)[0])} instead, which saves the next step.` : '')
+    + (skip ? ` A Combo while making the ${esc(prev)} skips this step ${Math.round(skip * 100)}% of the time, so its other materials count at ${Math.round((1 - skip) * 100)}%.` : '');
+}
 function singleSheet(e){
   const r = e.r, s = e.s, A = s.p ? 1 / s.p : 1;   // expected attempts for one success
   const ctx = {alloc: new Map(), sum: 0, saved: 0};
-  const lines = r.c.map(([k, q]) => treeRows(k, q * A, 0, String(r.id), new Set([String(r.p)]), ctx)).join('');
-  const fee = (r.fee || 0) * A, owns = Object.keys(S.owned).length > 0;
+  const lines = matsOf(r, new Set([String(r.p)])).map(([k, q]) => treeRows(k, q * A, 0, String(r.id), new Set([String(r.p)]), ctx)).join('');
+  const fee = (r.fee || 0) * A, owns = Object.keys(S.owned).length > 0, skip = skipOf(r, new Set([String(r.p)]));
   return `<div class="sheetin single"><div>
     <h3>Materials for one ${esc(e.name)}${r.y > 1 ? ' (one craft makes ' + r.y + ')' : ''}</h3>
-    <p class="notes" style="margin:0 0 10px">${s.locked ? `<span class="loss">Needs ${esc(pl(r.prof))} Lv ${r.ml}; you're at ${S.mastery[r.prof] || 1}.</span> ` : ''}${s.p ? `${pct(s.p)} success, so about ${fmtQty(A)} attempt${A === 1 ? '' : 's'}.` : 'Success chance unknown: quantities are for one attempt.'}</p>
+    <p class="notes" style="margin:0 0 10px">${s.locked ? `<span class="loss">Needs ${esc(pl(r.prof))} Lv ${r.ml}; you're at ${S.mastery[r.prof] || 1}.</span> ` : ''}${r.tr ? transferNote(r, skip) : s.p ? `${pct(s.p)} success, so about ${fmtQty(A)} attempt${A === 1 ? '' : 's'}.` : 'Success chance unknown: quantities are for one attempt.'}</p>
     <div class="mtable"><table><thead><tr><th>Material</th><th class="num q">Qty</th><th>Buy or craft (each)</th><th class="num own">Owned</th><th class="num">Cost</th></tr></thead>
     <tbody>${lines}<tr><td colspan="4"><b>Expected cost</b>${fee ? ' (incl. fees ' + kina(fee) + ')' : ''}${owns ? ' <button type="button" class="chip" data-clearowned>clear owned</button>' : ''}</td><td class="num"><b>${kina(ctx.sum + fee)}</b></td></tr></tbody></table></div>
     ${e.missing.length ? `<div class="notes" style="margin-top:10px"><p class="loss">No price for ${e.missing.map(k => esc(item(k)[0])).join(', ')}. Enter one to complete the cost.</p></div>` : ''}
@@ -1129,7 +1154,7 @@ function setMode(m){
   if((S.hosted || LIVE) && MODE_PAGE[m] && location.pathname !== MODE_PAGE[m].path) try{ history.pushState(null, '', MODE_PAGE[m].path) }catch(e){}
   S.cols = store.get(colsKey(), DEF_COLS[m]);
   S.sort = store.get(sortKey(), defaultSort(m));
-  S.open = null; syncMode(); render();
+  S.open = null; syncMode(); indexRecipes(); render();
 }
 function foldCards(){
   // remember which cards are folded
