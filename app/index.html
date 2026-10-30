@@ -57,7 +57,7 @@ h1 small{display:block;font:500 11px/1.4 var(--f-body);letter-spacing:.14em;text
 .want-title .orn{display:inline-flex;align-items:center;gap:5px;color:var(--cyan);letter-spacing:0;line-height:1}
 .want-title .orn i{font-style:normal}.want-title .orn .s{font-size:8px}.want-title .orn .m{font-size:11px}.want-title .orn .l{font-size:15px}
 .want-btns{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line)}
-.want-btn{font:600 13px/1.2 var(--f-body);letter-spacing:.16em;text-transform:uppercase;padding:16px 12px;border:0;border-radius:0;background:var(--panel-2);color:var(--muted);cursor:pointer;position:relative;transition:background .12s,color .12s}
+.want-btn{display:block;text-align:center;text-decoration:none;font:600 13px/1.2 var(--f-body);letter-spacing:.16em;text-transform:uppercase;padding:16px 12px;border:0;border-radius:0;background:var(--panel-2);color:var(--muted);cursor:pointer;position:relative;transition:background .12s,color .12s}
 .seg button,th,button.chip,.btn,.opt,.support-btn,.fold,.want-btn{transition:color .18s ease,background .18s ease,border-color .18s ease,box-shadow .18s ease,filter .18s ease}
 .want-btn+.want-btn{border-left:1px solid var(--line)}
 .want-btn:hover{color:var(--ink)}
@@ -192,6 +192,10 @@ tr.sheet>td{background:rgba(5,6,9,.55);padding:0;border-bottom:1px solid var(--a
 .notes p{margin:0}
 .legend{font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:-4px}
 .legend .chip{margin-left:0;margin-right:4px}
+.howto .card-body{display:block;max-width:80ch}
+.howto h3{font-size:13px;font-weight:600;color:var(--ink);margin:14px 0 4px}
+.howto p{margin:0 0 8px;color:var(--muted);line-height:1.55}
+.howto a{color:var(--accent)}
 footer{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:12px}
 footer p{margin:0}
 footer a{color:var(--accent)}
@@ -272,8 +276,8 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
   <section class="want" aria-label="What you want to craft">
     <h2 class="want-title"><span class="orn" aria-hidden="true"><i class="s">✦</i><i class="m">✦</i><i class="l">✦</i></span>I want to craft<span class="orn" aria-hidden="true"><i class="l">✦</i><i class="m">✦</i><i class="s">✦</i></span></h2>
     <div class="want-btns" role="group" aria-label="What you want to craft">
-      <button type="button" class="want-btn" data-mode="single" aria-pressed="true">specific items</button>
-      <button type="button" class="want-btn" data-mode="profit" aria-pressed="false">in bulk for profit</button>
+      <a href="/" class="want-btn" role="button" data-mode="single" aria-pressed="true">specific items</a>
+      <a href="/profit" class="want-btn" role="button" data-mode="profit" aria-pressed="false">in bulk for profit</a>
     </div>
   </section>
 
@@ -386,6 +390,23 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
     <span><span class="chip warn">est. success</span>success chance estimated</span>
   </div>
 
+  <section class="settings foldcard howto" aria-label="How it works">
+    <details class="card" id="cardHow">
+      <summary class="card-title">How it works</summary>
+      <div class="card-body">
+        <p>Daeva Forge is a free crafting calculator for AION 2 (Global). It works out what a craft really costs in Kina on your server, using the market's current prices, refreshed every hour for all servers.</p>
+        <h3>Crafting specific items</h3>
+        <p>On the <a href="/">specific items</a> page, pick the item you're after and it breaks the recipe down into everything it takes, all the way to the raw materials. For each material it takes the cheapest way to get it: buying it, crafting it, or morphing Odyle into it (one Odyle becomes one material of the same tier). Enter what you already own and it comes off the cost.</p>
+        <h3>Success, failure and Combo</h3>
+        <p>Every attempt uses up its materials. A failure gives nothing; a success gives the item, or by chance its Combo upgrade, such as a Splendent version. Success chances come from NC's official probability tables at your mastery level, so the cost of an item includes the attempts that fail, on average.</p>
+        <h3>Crafting for profit</h3>
+        <p>The <a href="/profit">crafting for profit</a> page ranks every recipe by expected profit per attempt, after the market's 10% sales tax and 2% listing fee. It also shows how fast each item sells and whether gear is worth one of your 10 sale slots, since gear doesn't stack. With "Plan with my Kina" on, it shows what a run of bad luck could cost and which crafts your Kina can ride out.</p>
+        <h3>Prices</h3>
+        <p>Prices are the lowest current asks from Aion2Market, captured once an hour. The calculator assumes the market buys everything you make at that price. Small markets move when you buy or sell, so check before crafting in bulk.</p>
+      </div>
+    </details>
+  </section>
+
   <section class="settings" id="feedback" aria-label="Feedback" hidden>
     <h2 class="card-title">Feedback</h2>
     <fieldset>
@@ -406,7 +427,6 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
   </section>
 
   <footer>
-    <p>How it works: every attempt uses up its materials. A failure gives nothing; a success gives the item, or the Combo upgrade by chance. Prices are the lowest current asks, after fees, and assume the market buys everything you make. Small markets move when you buy or sell.</p>
     <p>Data: recipes and vendor prices from <a href="https://aion2hub.com/tools/crafting-calculator" target="_blank" rel="noopener">AION2 Hub</a>, success chances from <a href="https://probability.plaync.com/aion2/index" target="_blank" rel="noopener">NC's probability disclosure</a> and <a href="https://gamewith.ai/aion2/en" target="_blank" rel="noopener">GameWith</a>, supply requests from <a href="https://wikily.gg/aion-2" target="_blank" rel="noopener">wikily</a>, prices from <a href="https://aion2.exchange/" target="_blank" rel="noopener">Aion2Market</a>.</p>
     <p id="dataInfo"></p>
     <p class="legal">Unofficial fan site. Not affiliated with, endorsed or sponsored by NCSOFT. AION, AION 2 and NCSOFT are trademarks of NCSOFT Corporation; all other trademarks are the property of their respective owners.</p>
@@ -1114,7 +1134,7 @@ function setMode(m){
 function foldCards(){
   // remember which cards are folded
   document.querySelectorAll('details.card').forEach(d => {
-    d.open = !store.get('folded:' + d.id, false);
+    d.open = !store.get('folded:' + d.id, !d.open);
     d.addEventListener('toggle', () => store.set('folded:' + d.id, !d.open));
   });
 }
@@ -1138,7 +1158,7 @@ function feedbackForm(){
 }
 function buildSettings(){
   if(S.mode !== 'profit'){ S.cols = store.get(colsKey(), DEF_COLS[S.mode]); S.sort = store.get(sortKey(), defaultSort(S.mode)) }
-  document.querySelectorAll('.want-btn').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+  document.querySelectorAll('.want-btn').forEach(b => b.addEventListener('click', ev => { ev.preventDefault(); setMode(b.dataset.mode) }));
   window.addEventListener('popstate', () => setMode(modeFromPath()));
   document.querySelectorAll('#xpStrategy button').forEach(b => b.addEventListener('click', () => {
     S.xpStrategy = b.dataset.v; store.set('xpStrategy', S.xpStrategy);

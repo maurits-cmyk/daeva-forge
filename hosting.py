@@ -64,17 +64,21 @@ def page(mode):
     start = body.index('<link rel="apple-touch-icon"'); start = body.index('>', start) + 1
     body = body[start:].replace('<small id="tagline">AION 2 crafting calculator</small>', f'<small id="tagline">{e(p["tagline"])}</small>')
     url = SITE_URL + p['path']
-    ld = {'@context': 'https://schema.org', '@type': 'WebApplication', 'name': 'Daeva Forge', 'url': url,
-          'applicationCategory': 'GameApplication', 'operatingSystem': 'Any', 'description': p['description'],
-          'offers': {'@type': 'Offer', 'price': '0', 'priceCurrency': 'USD'}}
+    ld = [{'@context': 'https://schema.org', '@type': 'WebApplication', 'name': 'Daeva Forge', 'url': url,
+           'applicationCategory': 'GameApplication', 'operatingSystem': 'Any', 'description': p['description'],
+           'inLanguage': 'en', 'isAccessibleForFree': True, 'about': {'@type': 'VideoGame', 'name': 'AION 2'},
+           'offers': {'@type': 'Offer', 'price': '0', 'priceCurrency': 'USD'}}]
+    if p['path'] == '/':  # the site's name in Google results
+        ld.append({'@context': 'https://schema.org', '@type': 'WebSite', 'name': 'Daeva Forge', 'url': SITE_URL + '/'})
     head = (f'<title>{e(p["title"])}</title><meta name="description" content="{e(p["description"])}">'
             f'<link rel="canonical" href="{url}">'
             '<link rel="icon" href="/favicon.ico" sizes="32x32"><link rel="icon" href="/favicon.svg" type="image/svg+xml">'
-            '<link rel="apple-touch-icon" href="/apple-touch-icon.png">'
+            '<link rel="apple-touch-icon" href="/apple-touch-icon.png"><meta name="theme-color" content="#08090c">'
             f'<meta property="og:type" content="website"><meta property="og:site_name" content="Daeva Forge">'
             f'<meta property="og:title" content="{e(p["title"])}"><meta property="og:description" content="{e(p["description"])}">'
             f'<meta property="og:url" content="{url}"><meta property="og:image" content="{SITE_URL}/og.png">'
             '<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">'
+            '<meta property="og:image:alt" content="Daeva Forge, an AION 2 crafting calculator"><meta property="og:locale" content="en_US">'
             '<meta name="twitter:card" content="summary_large_image">'
             f'<script type="application/ld+json">{json.dumps(ld)}</script>')
     return wrap_page(body, head)
