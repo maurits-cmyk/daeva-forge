@@ -142,6 +142,11 @@ button.chip:hover{color:var(--ink);border-color:var(--line-2)}
 details>summary{list-style-position:inside}
 .bar{display:inline-block;height:5px;border-radius:1px;background:var(--gain);vertical-align:middle;margin-left:6px;opacity:.8;box-shadow:0 0 6px rgba(111,211,138,.4)}
 .bar.neg{background:var(--loss);box-shadow:0 0 6px rgba(239,90,79,.35)}
+tr.grp>td{padding:0;background:var(--bar);border-bottom:1px solid var(--line)}
+tr.grp button{font:600 11.5px/1.3 var(--f-body);letter-spacing:.1em;text-transform:uppercase;color:var(--ink);background:transparent;border:0;width:100%;display:flex;align-items:baseline;gap:8px;padding:9px 12px;cursor:pointer;text-align:left;--cw:16px}
+tr.grp button:hover{color:#fff}
+tr.grp .muted{margin-left:auto;font-weight:400;letter-spacing:0;text-transform:none;font-size:12px}
+#tbl.stacked>tbody>tr.grp,#tbl.stacked>tbody>tr.grp>td{display:block}
 tr.sheet>td{background:rgba(5,6,9,.55);padding:0;border-bottom:1px solid var(--accent)}
 /* narrow screens: each recipe is a card (name on top, every ticked figure below with its label); headings become sort buttons */
 #tbl.stacked,#tbl.stacked>thead,#tbl.stacked>tbody,#tbl.stacked>tbody>tr.sheet,#tbl.stacked>tbody>tr.sheet>td{display:block}
@@ -160,17 +165,27 @@ tr.sheet>td{background:rgba(5,6,9,.55);padding:0;border-bottom:1px solid var(--a
 .sheetin tr.tree td{padding-block:6px}
 .sheetin tr.tree td:first-child{width:45%}
 .sheetin tr.tnote td span{display:block}
-.tname{padding-left:calc(var(--d,0) * 14px)}
-.tindent{padding-left:calc(var(--d,0) * 14px + 22px)}
+.mtable{--step:18px;--cw:16px;--guide:rgba(150,170,200,.32)}  /* indent per level, fold arrow width, guide line colour */
+.tname{padding-left:calc(var(--d,0) * var(--step))}
+.tindent{padding-left:calc(var(--d,0) * var(--step) + var(--cw) + 4px)}
+/* guide lines: positioned from the name, cut off at the cell's edges so they join up from row to row */
+.sheetin tr.tree td:first-child,.sheetin tr.tnote td{overflow:hidden}
+.tname,.tindent{position:relative}
+.g{position:absolute;left:calc(var(--l) * var(--step) + var(--cw) / 2);border-left:1px solid var(--guide)}
+.g.v{top:-999px;bottom:-999px}
+.g.el{top:-999px;height:calc(999px + .7em)}
+.g.dn{top:calc(.7em + 6px);bottom:-999px}
+.g.h{top:.7em;width:calc(var(--step) - var(--cw) / 2 + 1px);border-left:0;border-top:1px solid var(--guide)}
+.g.h.leaf{width:calc(var(--step) + var(--cw) / 2 - 2px)}
 .sheetin tr.tree:not(.d0) td{font-size:13px}
 .sheetin tr.tree:not(.d0){background:rgba(0,0,0,.18)}
 .tname{display:inline-flex;align-items:flex-start;gap:4px}
-.fold{font:inherit;font-size:13px;line-height:1.4;border:0;background:transparent;color:var(--cyan);cursor:pointer;padding:0 2px;width:16px}
+.fold{font:inherit;font-size:13px;line-height:1.4;border:0;background:transparent;color:var(--cyan);cursor:pointer;padding:0;width:var(--cw);flex:0 0 var(--cw);text-align:center}
 .sheetin tr.foldable{cursor:pointer}
 .sheetin tr.foldable:hover .fold{color:#fff}
 .foldbar{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
 .foldbar .chip{margin-left:0}
-.fold-sp{display:inline-block;width:16px;flex:0 0 16px}
+.fold-sp{display:inline-block;width:var(--cw);flex:0 0 var(--cw)}
 .sheetin tr.tnote td{font-size:12px;color:var(--muted);padding-block:3px 4px;border-bottom:1px solid var(--line)}
 .sheetin tr.tnote + tr.tree td, .sheetin tr.tree:has(+ tr.tnote) td{border-bottom:0}
 .sheetin th{position:static;cursor:default;background:var(--panel-2)}
@@ -231,15 +246,14 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
   .sheetin th,.sheetin td{padding:5px 4px}
   .sheetin .mtable .q,.sheetin .mtable .own{width:0;max-width:0;padding:0;border:0;font-size:0;overflow:hidden;white-space:nowrap}
   .qinline{display:inline;color:var(--muted);font-family:var(--f-num)}
-  .sheetin .tname{overflow-wrap:anywhere;padding-left:calc(var(--d,0) * 8px)}
-  .sheetin .tindent{padding-left:calc(var(--d,0) * 8px + 18px)}  /* long names may wrap mid-word rather than push Cost off narrow screens */
+  .sheetin .tname{overflow-wrap:anywhere}  /* long names may wrap mid-word rather than push Cost off narrow screens */
+  .sheetin .mtable table{--step:11px;--cw:10px}
   .owninline{display:flex;flex-direction:column;align-items:flex-start;gap:2px;margin-top:4px;font:600 10px/1.2 var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
   .mtable th:first-child,.mtable td:first-child{width:100%}  /* spare width goes to Material */
   .opt{padding:2px 5px;column-gap:6px}
 }
 @container mt (max-width:320px){
-  .sheetin .tname{padding-left:calc(var(--d,0) * 5px)}
-  .sheetin .tindent{padding-left:calc(var(--d,0) * 5px + 16px)}
+  .sheetin .mtable table{--step:8px;--cw:8px}
   .owninline input.owned{width:40px}
   .opt{padding:2px 4px}
 }
@@ -900,7 +914,7 @@ function renderRows(room = 99, pre = null, stacked = false){  // room: optional 
   const maxP = Math.max(1, ...rows.map(e => Math.abs(e.ppa || 0)));
   const body = $('#rows');
   if(!rows.length){ body.innerHTML = `<tr><td colspan="${cols}" class="empty">No recipes match. Try clearing the search or loosening the filters.</td></tr>`; summary(rows); return }
-  body.innerHTML = rows.map(e => {
+  const rowHtml = e => {
     const g = item(e.r.p)[1] || 'Common';
     const chips = (e.s.locked && S.mode !== 'single' ? `<span class="chip lock">needs ${e.r.ml}</span>` : '') + (e.flags.includes('stale') ? '<span class="chip warn">⚠ last ask</span>' : '') + (e.flags.includes('upstale') ? '<span class="chip warn">⚠ combo: last ask</span>' : '') + (S.mode === 'profit' && e.flags.includes('trashB') ? `<span class="chip risk" title="Not worth a sale slot, counted as trashed">${e.r.combo ? 'ordinary ones trashed' : 'not worth a slot'}</span>` : '') + (S.mode === 'profit' && e.flags.includes('trashU') ? '<span class="chip risk" title="Not worth a sale slot, counted as trashed">upgrades trashed</span>' : '') + (S.mode === 'profit' && e.base && e.base.kind === 'group' ? `<span class="chip" title="${esc(e.base.group.name)}">priced as ${esc(item(e.base.via)[0])}</span>` : '') + (e.missing.length ? '<span class="chip warn">price missing</span>' : '') + (e.s.p == null ? '<span class="chip warn">no success data</span>' : e.s.est ? '<span class="chip warn">est. success</span>' : '')
       + (S.mode === 'profit' && S.slots && e.sale.worth === false ? `<span class="chip risk" title="Earns ${kina(e.sale.ph)} per slot-hour (${kina(e.sale.per)} per listing, sells in ${fmtHours(e.sale.hours, e.sale.k)}); a slot-hour is worth ${kina(S.slotRate)}">not worth a slot</span>` : '')
@@ -932,6 +946,15 @@ function renderRows(room = 99, pre = null, stacked = false){  // room: optional 
     };
     return `<tr class="rec${open ? ' open' : ''}${e.s.locked ? ' locked' : ''}" data-id="${e.r.id}" tabindex="0" aria-expanded="${open}">${vis.map(c => c.k === 'name' ? cell.name() : cell[c.k]().replace('<td', `<td data-label="${esc(c.label)}"`)).join('')}</tr>`
       + (open ? `<tr class="sheet"><td colspan="${cols}">${S.mode === 'single' ? singleSheet(e) : sheet(e)}</td></tr>` : '');
+  };
+  // transfer crafts come in tiers by item level, above the other recipes, each tier a foldable group
+  const tiers = rows.some(e => e.r.tr) ? [5, 4, 3, 2, 1, 0] : null;
+  body.innerHTML = !tiers ? rows.map(rowHtml).join('') : tiers.map(t => {
+    const rs = rows.filter(e => (e.r.tr || 0) === t);
+    if(!rs.length) return '';
+    const folded = tierFolded(t, q);
+    return `<tr class="grp"><td colspan="${cols}"><button type="button" data-grp="${t}" aria-expanded="${!folded}"><span class="fold">${folded ? '▸' : '▾'}</span>${t ? 'Transfer crafts · item level ' + (62 + 8 * t) : 'Other recipes'}<span class="muted">${rs.length} recipe${rs.length === 1 ? '' : 's'}</span></button></td></tr>`
+      + (folded ? '' : rs.map(rowHtml).join(''));
   }).join('');
   summary(rows);
   // never scroll sideways: on narrow screens switch to cards (all ticked columns); otherwise drop the
@@ -941,6 +964,14 @@ function renderRows(room = 99, pre = null, stacked = false){  // room: optional 
     if(box.clientWidth < 560) return renderRows(99, rows, true);
     if(cols > 2) return renderRows(cols - 2, rows);
   }
+}
+// Folded tier groups: the top tier and the other recipes start open. A search opens every group (folds made
+// while searching last until the search changes).
+const LIST_FOLD = store.get('listFold', {}), SEARCH_FOLD = {q: '', tiers: new Set()};
+function tierFolded(t, q){
+  if(!q) return LIST_FOLD[t] ?? (t > 0 && t < 5);
+  if(SEARCH_FOLD.q !== q){ SEARCH_FOLD.q = q; SEARCH_FOLD.tiers = new Set() }
+  return SEARCH_FOLD.tiers.has(t);
 }
 function summary(rows){
   summaryText(rows);
@@ -1008,20 +1039,26 @@ function treeRows(k, qty, depth, path, stack, ctx){
     if(ctx && cost != null) cost -= ctx.saved - saved0;   // owned materials in this branch
   }
   if(ctx && depth === 0 && cost != null) ctx.sum += cost;
-  const row = folded => `<tr class="tree d${Math.min(depth, 6)}${open ? ' foldable' : ''}"${fold(folded)}><td><span class="tname" style="--d:${depth}">${caret(folded)}<span><span class="qinline">${fmtQty(need)} × </span><span class="g-${esc(nm[1] || 'Common')}">${esc(nm[0])}</span>${ownInline}</span></span></td><td class="num q">${qtyCell}</td>
+  const row = (folded, guides, noteGuides) => `<tr class="tree d${Math.min(depth, 6)}${open ? ' foldable' : ''}"${fold(folded)}><td><span class="tname" style="--d:${depth}">${guides}${caret(folded)}<span><span class="qinline">${fmtQty(need)} × </span><span class="g-${esc(nm[1] || 'Common')}">${esc(nm[0])}</span>${ownInline}</span></span></td><td class="num q">${qtyCell}</td>
     <td><div class="opts" role="group" aria-label="Buy, craft or morph ${esc(nm[0])}">${buyOpt}${craftOpt}${morphOpt}${chosen !== 'cheapest' && chosen !== S.sourcing ? '<button type="button" class="chip" data-src="' + k + '" data-v="">reset</button>' : ''}</div></td>
     ${ownCell}<td class="num${depth ? ' muted' : ''}">${cost == null ? '–' : kina(cost)}</td></tr>`
-    + (open ? `<tr class="tnote foldable"${fold(folded)}><td colspan="${ctx ? 5 : 4}"><span class="tindent" style="--d:${depth}">${note}${folded ? ` · ${kids.length} material${kids.length === 1 ? '' : 's'} hidden` : ''}</span></td></tr>` : '');
-  return {k: String(k), row, kids, cost, size: 1 + (kids ? kids.reduce((t, n) => t + n.size, 0) : 0)};
+    + (open ? `<tr class="tnote foldable"${fold(folded)}><td colspan="${ctx ? 5 : 4}"><span class="tindent" style="--d:${depth}">${noteGuides}${note}${folded ? ` · ${kids.length} material${kids.length === 1 ? '' : 's'} hidden` : ''}</span></td></tr>` : '');
+  return {k: String(k), row, kids, cost, depth, size: 1 + (kids ? kids.reduce((t, n) => t + n.size, 0) : 0)};
 }
 function treeHtml(nodes){
   const total = nodes.reduce((t, n) => t + (n.cost || 0), 0), big = nodes.reduce((t, n) => t + n.size, 0) > SMALL_TREE;
-  const emit = n => {
-    if(!n.kids) return n.row(false);
-    const folded = TREE_FOLD[n.k] ?? (big && !(total > 0 && n.cost >= BIG_SHARE * total));
-    return n.row(folded) + (folded ? '' : n.kids.map(emit).join(''));
+  // guide lines as in-game: from each opened material down to its last material, with a branch to each.
+  // through[i]: the line at level i runs on below this row (the path's material at level i+1 isn't its last)
+  const g = (cls, l) => `<i class="g ${cls}" style="--l:${l}"></i>`;
+  const emit = (n, through, last) => {
+    const d = n.depth, folded = n.kids && (TREE_FOLD[n.k] ?? (big && !(total > 0 && n.cost >= BIG_SHARE * total)));
+    let gr = through.map((on, i) => on ? g('v', i) : '').join(''), gn = gr;
+    if(d){ gr += g(last ? 'el' : 'v', d - 1) + g(n.kids ? 'h' : 'h leaf', d - 1); if(!last) gn += g('v', d - 1) }
+    if(n.kids && !folded){ gr += g('dn', d); gn += g('v', d) }
+    const next = d ? [...through, !last] : [];
+    return n.row(folded, gr, gn) + (n.kids && !folded ? n.kids.map((c, i) => emit(c, next, i === n.kids.length - 1)).join('') : '');
   };
-  return nodes.map(emit).join('');
+  return nodes.map(n => emit(n, [], false)).join('');
 }
 function foldBar(nodes){
   const keys = new Set(), walk = ns => ns.forEach(n => { if(n.kids){ keys.add(n.k); walk(n.kids) } });
@@ -1301,6 +1338,13 @@ function buildSettings(){
   document.addEventListener('keydown', ev => { if(ev.key === 'Escape' && !pop.hidden){ openPop(false); btn.focus() } });
   const rowsEl = $('#rows');
   rowsEl.addEventListener('click', ev => {
+    const grp = ev.target.closest('[data-grp]');
+    if(grp){
+      const t = +grp.dataset.grp, q = S.q.trim().toLowerCase(), folded = tierFolded(t, q);
+      if(q){ if(folded) SEARCH_FOLD.tiers.delete(t); else SEARCH_FOLD.tiers.add(t) }
+      else { LIST_FOLD[t] = !folded; store.set('listFold', LIST_FOLD) }
+      render(); return
+    }
     const all = ev.target.closest('[data-foldall]');
     if(all){
       for(const k of all.dataset.keys.split(',')){ if(all.dataset.foldall === 'auto') delete TREE_FOLD[k]; else TREE_FOLD[k] = all.dataset.foldall === 'fold' }
