@@ -185,6 +185,11 @@ tr.sheet>td{background:rgba(5,6,9,.55);padding:0;border-bottom:1px solid var(--a
 .sheetin tr.foldable:hover .fold{color:#fff}
 .foldbar{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
 .foldbar .chip{margin-left:0}
+.foldbar .clearown{margin-left:auto}
+.ownbox{display:inline-flex;align-items:center;gap:2px}
+.ownx{font:inherit;font-size:15px;line-height:1;width:16px;height:18px;flex:0 0 16px;padding:0;border:0;border-radius:2px;background:transparent;color:var(--muted);cursor:pointer}
+.ownx:hover{color:#fff;background:rgba(255,255,255,.08)}
+span.ownx{display:inline-block;cursor:default}
 .fold-sp{display:inline-block;width:var(--cw);flex:0 0 var(--cw)}
 .sheetin tr.tnote td{font-size:12px;color:var(--muted);padding-block:3px 4px;border-bottom:1px solid var(--line)}
 .sheetin tr.tnote + tr.tree td, .sheetin tr.tree:has(+ tr.tnote) td{border-bottom:0}
@@ -1021,8 +1026,10 @@ function treeRows(k, qty, depth, path, stack, ctx){
   let cost = u.pick ? need * u.pick.v : null;
   const qtyCell = fmtQty(need) + (need < qty ? `<span class="sub">of ${fmtQty(qty)}</span>` : '');
   const ownInput = `<input class="owned" type="number" min="0" step="1" value="${+S.owned[String(k)] || 0}" data-owned="${k}" aria-label="How many ${esc(nm[0])} you own">`;
-  const ownCell = ctx ? `<td class="num own">${ownInput}</td>` : '';
-  const ownInline = ctx ? `<label class="owninline">Owned${ownInput}</label>` : '';
+  // an edited Owned field gets a reset button (the table keeps its place empty, so the fields stay in line)
+  const ownReset = keep => +S.owned[String(k)] ? `<button type="button" class="ownx" data-clearown="${k}" title="Reset to 0" aria-label="Reset how many ${esc(nm[0])} you own">×</button>` : keep ? '<span class="ownx"></span>' : '';
+  const ownCell = ctx ? `<td class="num own"><span class="ownbox">${ownInput}${ownReset(true)}</span></td>` : '';
+  const ownInline = ctx ? `<label class="owninline">Owned<span class="ownbox">${ownInput}${ownReset(false)}</span></label>` : '';
   let kids = null, note = '';
   if(open){
     const c = u.craft, L = c.left, att = need * c.att;
@@ -1060,13 +1067,15 @@ function treeHtml(nodes){
   };
   return nodes.map(n => emit(n, [], false)).join('');
 }
-function foldBar(nodes){
+function foldBar(nodes, extra = ''){
   const keys = new Set(), walk = ns => ns.forEach(n => { if(n.kids){ keys.add(n.k); walk(n.kids) } });
   walk(nodes);
-  if(!keys.size) return '';
   const ks = esc([...keys].join(',')), b = (v, t) => `<button type="button" class="chip" data-foldall="${v}" data-keys="${ks}">${t}</button>`;
-  return `<div class="foldbar">${b('open', 'open all')}${b('fold', 'fold all')}${[...keys].some(k => k in TREE_FOLD) ? b('auto', 'default folding') : ''}</div>`;
+  const chips = keys.size ? b('open', 'open all') + b('fold', 'fold all') + ([...keys].some(k => k in TREE_FOLD) ? b('auto', 'default folding') : '') : '';
+  return chips || extra ? `<div class="foldbar">${chips}${extra}</div>` : '';
 }
+// every material in a tree, folded or not
+const treeKeys = (nodes, out = new Set()) => { nodes.forEach(n => { out.add(n.k); if(n.kids) treeKeys(n.kids, out) }); return out };
 function expBlock(e){
   if(S.mode !== 'exp') return '';
   const x = e.xp, r = e.r;
@@ -1093,12 +1102,14 @@ function singleSheet(e){
   const r = e.r, s = e.s, A = s.p ? 1 / s.p : 1;   // expected attempts for one success
   const ctx = {alloc: new Map(), sum: 0, saved: 0};
   const nodes = matsOf(r, new Set([String(r.p)])).map(([k, q]) => treeRows(k, q * A, 0, String(r.id), new Set([String(r.p)]), ctx)), lines = treeHtml(nodes);
-  const fee = (r.fee || 0) * A, owns = Object.keys(S.owned).length > 0, skip = skipOf(r, new Set([String(r.p)]));
+  const owned = [...treeKeys(nodes)].filter(k => +S.owned[k] > 0);
+  const clearOwned = owned.length ? `<button type="button" class="chip clearown" data-clearowned="${esc(owned.join(','))}">clear owned</button>` : '';
+  const fee = (r.fee || 0) * A, skip = skipOf(r, new Set([String(r.p)]));
   return `<div class="sheetin single"><div>
     <h3>Materials for one ${esc(e.name)}${r.y > 1 ? ' (one craft makes ' + r.y + ')' : ''}</h3>
     <p class="notes" style="margin:0 0 10px">${s.locked ? `<span class="loss">Needs ${esc(pl(r.prof))} Lv ${r.ml}; you're at ${S.mastery[r.prof] || 1}.</span> ` : ''}${r.tr ? transferNote(r, skip) : s.p ? `${pct(s.p)} success, so about ${fmtQty(A)} attempt${A === 1 ? '' : 's'}.` : 'Success chance unknown: quantities are for one attempt.'}</p>
-    ${foldBar(nodes)}<div class="mtable"><table><thead><tr><th>Material</th><th class="num q">Qty</th><th>Buy or craft (each)</th><th class="num own">Owned</th><th class="num">Cost</th></tr></thead>
-    <tbody>${lines}<tr><td colspan="4"><b>Expected cost</b>${fee ? ' (incl. fees ' + kina(fee) + ')' : ''}${owns ? ' <button type="button" class="chip" data-clearowned>clear owned</button>' : ''}</td><td class="num"><b>${kina(ctx.sum + fee)}</b></td></tr></tbody></table></div>
+    ${foldBar(nodes, clearOwned)}<div class="mtable"><table><thead><tr><th>Material</th><th class="num q">Qty</th><th>Buy or craft (each)</th><th class="num own">Owned</th><th class="num">Cost</th></tr></thead>
+    <tbody>${lines}<tr><td colspan="4"><b>Expected cost</b>${fee ? ' (incl. fees ' + kina(fee) + ')' : ''}${clearOwned ? ' ' + clearOwned : ''}</td><td class="num"><b>${kina(ctx.sum + fee)}</b></td></tr></tbody></table></div>
     ${e.missing.length ? `<div class="notes" style="margin-top:10px"><p class="loss">No price for ${e.missing.map(k => esc(item(k)[0])).join(', ')}. Enter one to complete the cost.</p></div>` : ''}
   </div></div>`;
 }
@@ -1355,7 +1366,8 @@ function buildSettings(){
     if(fold){ TREE_FOLD[fold.dataset.fold] = fold.dataset.folded !== '1'; store.set('treeFold', TREE_FOLD); render(); return }
     const cx = ev.target.closest('[data-clearxp]');
     if(cx){ delete S.xpOwn[cx.dataset.clearxp]; store.set('xpOwn', S.xpOwn); xpOwnCount(); render(); return }
-    if(ev.target.closest('[data-clearowned]')){ S.owned = {}; store.set('owned', S.owned); render(); return }
+    const co = ev.target.closest('[data-clearown], [data-clearowned]');  // one Owned field, or all of a recipe's
+    if(co){ for(const k of (co.dataset.clearown || co.dataset.clearowned).split(',')) delete S.owned[k]; store.set('owned', S.owned); render(); return }
     const clr = ev.target.closest('[data-clear]');
     if(clr){ delete S.manual[clr.dataset.clear]; store.set('manual', S.manual); manualCount(); render(); return }
     const src = ev.target.closest('[data-src]');
