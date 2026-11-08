@@ -33,7 +33,7 @@ PAGES = {
                               "with NC's success chances, Combo upgrades and the materials you already own."},
     'profit': {'file': 'profit.html', 'path': '/profit', 'tagline': 'AION 2 crafting for profit',
                'title': 'AION 2 Crafting for Profit: Best Recipes per Server – Daeva Forge (unofficial)',
-               'description': "Find the most profitable AION 2 crafts on your server: expected profit per attempt from hourly "
+               'description': "Find the most profitable AION 2 crafts on your server: expected profit per attempt from current "
                               "market prices, NC's success chances, sale speeds and bad-luck risk. Free."},
 }
 

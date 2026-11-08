@@ -412,7 +412,7 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
     <details class="card" id="cardHow">
       <summary class="card-title">How it works</summary>
       <div class="card-body">
-        <p>Daeva Forge is a free crafting calculator for AION 2 (Global). It works out what a craft really costs in Kina on your server, using the market's current prices, refreshed every hour for all servers.</p>
+        <p>Daeva Forge is a free crafting calculator for AION 2 (Global). It works out what a craft really costs in Kina on your server, using the market's current prices, refreshed through the day for all servers.</p>
         <h3>Crafting specific items</h3>
         <p>On the <a href="/">specific items</a> page, pick the item you're after and it breaks the recipe down into everything it takes, all the way to the raw materials. For each material it takes the cheapest way to get it: buying it, crafting it, or morphing Odyle into it (one Odyle becomes one material of the same tier). Enter what you already own and it comes off the cost.</p>
         <h3>Success, failure and Combo</h3>
@@ -420,7 +420,7 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
         <h3>Crafting for profit</h3>
         <p>The <a href="/profit">crafting for profit</a> page ranks every recipe by expected profit per attempt, after the market's 10% sales tax and 2% listing fee. It also shows how fast each item sells and whether gear is worth one of your 10 sale slots, since gear doesn't stack. With "Plan with my Kina" on, it shows what a run of bad luck could cost and which crafts your Kina can ride out.</p>
         <h3>Prices</h3>
-        <p>Prices are the lowest current asks from Aion2Market, captured once an hour. The calculator assumes the market buys everything you make at that price. Small markets move when you buy or sell, so check before crafting in bulk.</p>
+        <p>Prices are the lowest current asks from Aion2Market; the top of the page shows how old they are. The calculator assumes the market buys everything you make at that price. Small markets move when you buy or sell, so check before crafting in bulk.</p>
       </div>
     </details>
   </section>
@@ -1178,9 +1178,9 @@ function groupNote(k, who){
 function statusBar(){
   const s = S.server, fresh = (LIVE || S.hosted) && S.liveOk;
   if(!fresh && !S.fetchedAt){ $('#status').innerHTML = `<span class="pill snap"><span class="dot"></span>Prices didn't load; reload to try again</span>`; $('#dataInfo').textContent = `Recipes updated ${S.data.recipesBuilt}.`; return }
-  const mode = fresh ? `<span class="pill live"><span class="dot"></span>Live prices</span>` : `<span class="pill snap"><span class="dot"></span>${LIVE ? 'Snapshot (live prices unavailable)' : 'Price snapshot'}</span>`;
-  $('#status').innerHTML = `${mode}<span class="pill">${esc(s.name)} · ${esc(s.region)} · ${esc(s.faction)}</span>${fresh ? '<span class="pill" title="Aion2Market takes new prices once an hour">Prices hourly · updated ' : '<span class="pill">Prices updated '}${ago(S.fetchedAt)}</span>`;
-  $('#dataInfo').textContent = `Recipes updated ${S.data.recipesBuilt}. Prices: ${fresh ? 'hourly from Aion2Market' : S.data.built ? 'snapshot from ' + new Date(S.data.built).toLocaleString() : 'not loaded'}.`;
+  const mode = fresh ? `<span class="pill live"><span class="dot"></span>Market prices</span>` : `<span class="pill snap"><span class="dot"></span>${LIVE ? 'Snapshot (live prices unavailable)' : 'Price snapshot'}</span>`;
+  $('#status').innerHTML = `${mode}<span class="pill">${esc(s.name)} · ${esc(s.region)} · ${esc(s.faction)}</span><span class="pill">Prices updated ${ago(S.fetchedAt)}</span>`;
+  $('#dataInfo').textContent = `Recipes updated ${S.data.recipesBuilt}. Prices: ${fresh ? 'from Aion2Market' : S.data.built ? 'snapshot from ' + new Date(S.data.built).toLocaleString() : 'not loaded'}.`;
 }
 
 /* ---------- settings UI ---------- */
