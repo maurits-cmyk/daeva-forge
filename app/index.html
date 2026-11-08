@@ -554,6 +554,7 @@ const tableOf = r => { const o = (S.data.official || {})[r.id]; if(o) return o; 
 let FALLBACK = [];
 function successOf(r){
   if(r.tr) return {p:1, diff:0, locked:false};  // transfer crafting always succeeds and needs no mastery
+  if(r.g){ const diff = (S.mastery[r.prof] || 1) - r.ml; return {p:1, diff, locked: diff < 0} }  // guaranteed, at the usual level
   let tab = tableOf(r), est = false;
   const diff = (S.mastery[r.prof] || 1) - r.ml;
   if(!tab && r.ml > 0){
@@ -591,7 +592,8 @@ const QUEST_TOOL = /^(Novice|Professional) .+ \(Bound\)$/;  // profession tools 
 function indexRecipes(){
   // level 0: transfer crafting (r.tr = its step in the Dragon Lord chain, see build_data.py). It makes Soul Bound
   // gear, so it's only for planning a particular item; the other level-0 recipes aren't real crafts
-  RECIPES = S.data.recipes.filter(r => r.race === race() && (r.ml > 0 || (r.tr && S.mode === 'single')) && !QUEST_TOOL.test(item(r.p)[0]));
+  // guaranteed Dragon Lord crafts (r.g) make Bound gear too: also only for planning a particular item
+  RECIPES = S.data.recipes.filter(r => r.race === race() && (r.ml > 0 && !r.g || ((r.tr || r.g) && S.mode === 'single')) && !QUEST_TOOL.test(item(r.p)[0]));
   FALLBACK = S.data.recipes.filter(r => r.ml > 0 && tableOf(r)).map(r => ({ml:r.ml, prof:r.prof, tab:tableOf(r)}));
   indexGroups(); indexMorphs();
   BY_OUT = {};
@@ -854,7 +856,7 @@ const DEF_COLS = {profit: ['ppa', 'bad'], single: ['one'], exp: ['xpa', 'kxp', '
 const colsKey = () => ({exp: 'colsExp', single: 'colsSingle'})[S.mode] || 'cols', sortKey = () => ({exp: 'sortExp', single: 'sortSingleGrade'})[S.mode] || 'sort';
 const defaultSort = m => m === 'exp' ? (S.xpStrategy === 'fast' ? {k:'xpa', dir:-1} : {k:'kxp', dir:1}) : m === 'single' ? {k:'gr', dir:-1} : {k:'bad', dir:-1};
 const GRADE_RANK = {Common: 0, Rare: 1, Legend: 2, Epic: 3, Unique: 4};
-const lvText = r => r.tr ? 'transfer' : 'Lv ' + r.ml;
+const lvText = r => r.tr ? 'transfer' : 'Lv ' + r.ml + (r.g ? ', guaranteed' : '');
 const levelOf = r => r.tr ? 62 + 8 * r.tr : r.ml;  // transfer steps have no level requirement: sort by item level (70 up to 102)
 const showCol = c => (!c.exp || S.mode === 'exp') && (!c.single || S.mode === 'single') && (!c.plan || S.mode === 'profit');
 const costOfOne = e => e.cost != null && e.s.p ? e.cost / (e.s.p * e.r.y) : null;
@@ -952,13 +954,14 @@ function renderRows(room = 99, pre = null, stacked = false){  // room: optional 
     return `<tr class="rec${open ? ' open' : ''}${e.s.locked ? ' locked' : ''}" data-id="${e.r.id}" tabindex="0" aria-expanded="${open}">${vis.map(c => c.k === 'name' ? cell.name() : cell[c.k]().replace('<td', `<td data-label="${esc(c.label)}"`)).join('')}</tr>`
       + (open ? `<tr class="sheet"><td colspan="${cols}">${S.mode === 'single' ? singleSheet(e) : sheet(e)}</td></tr>` : '');
   };
-  // transfer crafts come in tiers by item level, above the other recipes, each tier a foldable group
-  const tiers = rows.some(e => e.r.tr) ? [5, 4, 3, 2, 1, 0] : null;
+  // transfer crafts come in tiers by item level, then the guaranteed crafts, above the other recipes; each a foldable group
+  const tiers = rows.some(e => e.r.tr || e.r.g) ? ['5', '4', '3', '2', '1', 'g', 'rest'] : null;
+  const groupOf = e => e.r.tr ? String(e.r.tr) : e.r.g ? 'g' : 'rest';
   body.innerHTML = !tiers ? rows.map(rowHtml).join('') : tiers.map(t => {
-    const rs = rows.filter(e => (e.r.tr || 0) === t);
+    const rs = rows.filter(e => groupOf(e) === t);
     if(!rs.length) return '';
     const folded = tierFolded(t, q);
-    return `<tr class="grp"><td colspan="${cols}"><button type="button" data-grp="${t}" aria-expanded="${!folded}"><span class="fold">${folded ? '▸' : '▾'}</span>${t ? 'Transfer crafts · item level ' + (62 + 8 * t) : 'Other recipes'}<span class="muted">${rs.length} recipe${rs.length === 1 ? '' : 's'}</span></button></td></tr>`
+    return `<tr class="grp"><td colspan="${cols}"><button type="button" data-grp="${t}" aria-expanded="${!folded}"><span class="fold">${folded ? '▸' : '▾'}</span>${t === 'rest' ? 'Other recipes' : t === 'g' ? 'Guaranteed crafts · item level 62' : 'Transfer crafts · item level ' + (62 + 8 * t)}<span class="muted">${rs.length} recipe${rs.length === 1 ? '' : 's'}</span></button></td></tr>`
       + (folded ? '' : rs.map(rowHtml).join(''));
   }).join('');
   summary(rows);
@@ -974,7 +977,7 @@ function renderRows(room = 99, pre = null, stacked = false){  // room: optional 
 // while searching last until the search changes).
 const LIST_FOLD = store.get('listFold', {}), SEARCH_FOLD = {q: '', tiers: new Set()};
 function tierFolded(t, q){
-  if(!q) return LIST_FOLD[t] ?? (t > 0 && t < 5);
+  if(!q) return LIST_FOLD[t] ?? (t !== '5' && t !== 'rest');
   if(SEARCH_FOLD.q !== q){ SEARCH_FOLD.q = q; SEARCH_FOLD.tiers = new Set() }
   return SEARCH_FOLD.tiers.has(t);
 }
@@ -1037,7 +1040,7 @@ function treeRows(k, qty, depth, path, stack, ctx){
     const up = c.r.combo ? item(c.r.combo.p)[0] : '', splendent = /Splendent/.test(up);
     const kind = !L ? '' : c.r.combo && String(L.k) === String(c.r.combo.p) ? (splendent ? 'Splendent' : 'upgrade') : (splendent ? 'non-Splendent' : 'ordinary');
     const skip = skipOf(c.r, new Set([...stack, String(k)]));
-    note = [c.r.tr ? 'transfer, always succeeds' + (skip ? `; a Combo on the step before skips it ${Math.round(skip * 100)}% of the time` : '') : `about ${fmtQty(att)} attempt${att === 1 ? '' : 's'}`]
+    note = [c.r.tr ? 'transfer, always succeeds' + (skip ? `; a Combo on the step before skips it ${Math.round(skip * 100)}% of the time` : '') : c.r.g ? 'guaranteed, no Combo' : `about ${fmtQty(att)} attempt${att === 1 ? '' : 's'}`]
       .concat(!L ? [] : [`${kind} leftovers ${L.trashed ? 'trashed' : 'sold'}`])
       .concat(c.free ? ['leftovers pay for it'] : []).join(' · ');
     const st = new Set(stack); st.add(String(k));
@@ -1107,7 +1110,7 @@ function singleSheet(e){
   const fee = (r.fee || 0) * A, skip = skipOf(r, new Set([String(r.p)]));
   return `<div class="sheetin single"><div>
     <h3>Materials for one ${esc(e.name)}${r.y > 1 ? ' (one craft makes ' + r.y + ')' : ''}</h3>
-    <p class="notes" style="margin:0 0 10px">${s.locked ? `<span class="loss">Needs ${esc(pl(r.prof))} Lv ${r.ml}; you're at ${S.mastery[r.prof] || 1}.</span> ` : ''}${r.tr ? transferNote(r, skip) : s.p ? `${pct(s.p)} success, so about ${fmtQty(A)} attempt${A === 1 ? '' : 's'}.` : 'Success chance unknown: quantities are for one attempt.'}</p>
+    <p class="notes" style="margin:0 0 10px">${s.locked ? `<span class="loss">Needs ${esc(pl(r.prof))} Lv ${r.ml}; you're at ${S.mastery[r.prof] || 1}.</span> ` : ''}${r.tr ? transferNote(r, skip) : r.g ? 'Guaranteed craft: always succeeds, never Combos and makes Bound gear.' : s.p ? `${pct(s.p)} success, so about ${fmtQty(A)} attempt${A === 1 ? '' : 's'}.` : 'Success chance unknown: quantities are for one attempt.'}</p>
     ${foldBar(nodes, clearOwned)}<div class="mtable"><table><thead><tr><th>Material</th><th class="num q">Qty</th><th>Buy or craft (each)</th><th class="num own">Owned</th><th class="num">Cost</th></tr></thead>
     <tbody>${lines}<tr><td colspan="4"><b>Expected cost</b>${fee ? ' (incl. fees ' + kina(fee) + ')' : ''}${clearOwned ? ' ' + clearOwned : ''}</td><td class="num"><b>${kina(ctx.sum + fee)}</b></td></tr></tbody></table></div>
     ${e.missing.length ? `<div class="notes" style="margin-top:10px"><p class="loss">No price for ${e.missing.map(k => esc(item(k)[0])).join(', ')}. Enter one to complete the cost.</p></div>` : ''}
@@ -1351,7 +1354,7 @@ function buildSettings(){
   rowsEl.addEventListener('click', ev => {
     const grp = ev.target.closest('[data-grp]');
     if(grp){
-      const t = +grp.dataset.grp, q = S.q.trim().toLowerCase(), folded = tierFolded(t, q);
+      const t = grp.dataset.grp, q = S.q.trim().toLowerCase(), folded = tierFolded(t, q);
       if(q){ if(folded) SEARCH_FOLD.tiers.delete(t); else SEARCH_FOLD.tiers.add(t) }
       else { LIST_FOLD[t] = !folded; store.set('listFold', LIST_FOLD) }
       render(); return

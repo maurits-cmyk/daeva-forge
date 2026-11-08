@@ -65,6 +65,14 @@ def add_transfer(rec, code, key):
         rec['alias'] = key(m.group(1) + 'Combo_001' + m.group(3))
 
 
+# Guaranteed Dragon Lord crafts (Nov 4 2026 patch): every ordinary True/Star Dragon Lord craft got a twin recipe with
+# the same materials and mastery level (the user, in-game, 2026-11-08) that always succeeds, never Combos and makes
+# Bound gear. aion2hub predates it, so it's added here (`g`; id offset by 1e9 to stay unique).
+def guaranteed(rec, code):
+    if rec['ml'] > 0 and re.search(r'craftdraconic_001[a-z]_', code):
+        return dict(rec, id=rec['id'] + 1_000_000_000, g=1, combo=None, c=[list(c) for c in rec['c']])
+
+
 def main():
     args = sys.argv[1:]
     server_id = int(args[args.index('--server') + 1]) if '--server' in args else 12101
@@ -85,6 +93,8 @@ def main():
                'c': [[key(c['i']), c['q']] for c in r['c']]}
         add_transfer(rec, r['p'], key)
         recipes.append(rec)
+        if (twin := guaranteed(rec, r['p'])):
+            recipes.append(twin)
         used.update([rec['p']] + [c[0] for c in rec['c']] + ([rec['combo']['p']] if rec['combo'] else []))
     by_key = {v['i']: v for v in items.values() if v.get('i')}
     item_out = {}
