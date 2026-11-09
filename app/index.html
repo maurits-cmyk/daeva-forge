@@ -22,13 +22,13 @@ html{background:var(--stage)}
 body{color:var(--ink);font:14px/1.45 var(--f-body);background:var(--stage) radial-gradient(120% 70% at 50% -10%,#232833 0%,#13161c 45%,var(--stage) 80%) no-repeat;background-attachment:fixed;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
 .wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
 header{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"title badge" "status support";align-items:center;gap:12px 18px;padding-bottom:12px;border-bottom:1px solid var(--line)}
-header h1{grid-area:title}
+header :is(h1,.h1){grid-area:title}
 header .unofficial{grid-area:badge;justify-self:end;align-self:start}
 header .status{grid-area:status}
 header .support{grid-area:support;justify-self:end}
-h1{display:flex;align-items:center;gap:12px;font:400 28px/1.1 var(--f-display);letter-spacing:.03em;margin:0;text-wrap:balance}
-h1 .emblem{flex:0 0 auto;width:38px;height:38px}
-h1 small{display:block;font:500 11px/1.4 var(--f-body);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:5px}
+.h1,header h1{display:flex;align-items:center;gap:12px;font:400 28px/1.1 var(--f-display);letter-spacing:.03em;margin:0;text-wrap:balance}
+.h1 .emblem,header h1 .emblem{flex:0 0 auto;width:38px;height:38px}
+.h1 small,header h1 small{display:block;font:500 11px/1.4 var(--f-body);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:5px}
 .status{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12.5px;color:var(--muted)}
 .pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:3px;border:1px solid var(--line);background:var(--panel);white-space:nowrap;color:var(--ink)}
 .pill.live{border-color:rgba(111,211,138,.45);color:var(--gain)}
@@ -221,11 +221,20 @@ span.ownx{display:inline-block;cursor:default}
 .howto h3{font-size:13px;font-weight:600;color:var(--ink);margin:14px 0 4px}
 .howto p{margin:0 0 8px;color:var(--muted);line-height:1.55}
 .howto a{color:var(--accent)}
+/* item pages (/item/<name>, built by hosting.py): what the item takes, above the calculator */
+.itempage{display:block}
+.itempage h1.card-title{font-size:13px}
+.itempage p,.itempage ul{margin:10px 0;max-width:90ch;line-height:1.5}
+.itempage ul{padding-left:18px}
+.itempage li+li{margin-top:4px}
+.itempage a{color:var(--accent)}
+.itempage .itemcost{font-size:15px}
+.itempage .itemcost b{color:#fff}
 footer{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:12px}
 footer p{margin:0}
 footer a{color:var(--accent)}
 .empty{padding:28px;text-align:center;color:var(--muted)}
-h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);border:1px solid rgba(95,214,232,.45);border-radius:2px;padding:3px 6px 2px;margin-left:6px;vertical-align:middle;position:relative;top:-3px}
+.h1 .beta,header h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);border:1px solid rgba(95,214,232,.45);border-radius:2px;padding:3px 6px 2px;margin-left:6px;vertical-align:middle;position:relative;top:-3px}
 .pill.unofficial{color:var(--muted);border-style:dashed;font-size:11.5px;letter-spacing:.04em}
 .support-btn{text-decoration:none;display:inline-flex;align-items:center;gap:7px;font:600 13px var(--f-body);color:var(--gold-ink);background:linear-gradient(180deg,var(--gold),var(--gold-2));border:1px solid #f7d97a;border-radius:3px;padding:7px 18px;box-shadow:0 0 14px rgba(242,196,67,.25);cursor:pointer}
 .support-btn:hover{filter:brightness(1.08);box-shadow:0 0 18px rgba(242,196,67,.4)}
@@ -235,7 +244,7 @@ h1 .beta{font:600 11px/1 var(--f-body);letter-spacing:.14em;text-transform:upper
 /* the game's ornament: a thin rule with a small diamond, under the page title */
 .ornament{display:flex;align-items:center;gap:10px;color:var(--dim);font-size:9px;margin:-4px 0 0}
 .ornament::before,.ornament::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--line-2),transparent)}
-@media (max-width:760px){.sheetin{grid-template-columns:1fr} h1{font-size:23px} h1 .emblem{width:32px;height:32px}}
+@media (max-width:760px){.sheetin{grid-template-columns:1fr} .h1,header h1{font-size:23px} .h1 .emblem,header h1 .emblem{width:32px;height:32px}}
 .qinline{display:none}
 @media (max-width:520px){
   header{grid-template-columns:auto auto;grid-template-areas:"title title" "status status" "badge support"}
@@ -492,20 +501,26 @@ const MODE_PAGE = {
 };
 // Item links: /?item=<name>&server=<id> opens that item's recipe on that server (&guaranteed=1 for the guaranteed
 // one). The address follows the open recipe, so it can be copied and shared as it is.
-const LINK = (() => { try{ const p = new URLSearchParams(location.search); return {item: p.get('item'), g: p.get('guaranteed') === '1', server: +p.get('server') || null} }catch(e){ return {} } })();
+// Item pages, /item/<name> (hosting.py builds one per craftable item), are the same app opened on that item
+const PAGE_ITEM = (location.pathname.match(/^\/item\/([a-z0-9-]+?)(?:\.html)?\/?$/) || [])[1] || null;
+const LINK = (() => { try{ const p = new URLSearchParams(location.search); return {item: p.get('item') || PAGE_ITEM, g: p.get('guaranteed') === '1', server: +p.get('server') || null} }catch(e){ return {item: PAGE_ITEM} } })();
 const slugOf = n => n.toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const LINKS = () => S.hosted || LIVE;  // the claude.ai copy has no address of its own
+const AT = PAGE_ITEM ? '/' : '';  // item pages sit a folder down; the site's files are at its root
 function openLinked(){
   const want = LINK.item; LINK.item = null;
   const r = RECIPES.filter(r => slugOf(item(r.p)[0]) === want).sort((a, b) => (!!b.g === LINK.g) - (!!a.g === LINK.g))[0];
   if(!r) return;
   // search for it, so its group opens and the recipes around it (its upgrades, what it's made from) show too
-  S.open = LINK.scroll = r.id; S.q = item(r.p)[0]; $('#q').value = S.q;
+  S.open = r.id; S.q = item(r.p)[0]; $('#q').value = S.q;
+  if(!PAGE_ITEM) LINK.scroll = r.id;  // an item page starts at its card, which shows the cost
 }
 function syncUrl(){
   if(!LINKS() || !MODE_PAGE[S.mode]) return;
-  const r = S.open != null && RECIPES.find(r => r.id === S.open);
-  const url = MODE_PAGE[S.mode].path + (r ? `?item=${slugOf(item(r.p)[0])}${r.g ? '&guaranteed=1' : ''}&server=${S.server.id}` : '');
+  const r = S.open != null && RECIPES.find(r => r.id === S.open), pages = S.hosted && S.mode === 'single';  // serve.py has no item pages
+  const q = r && `${r.g ? 'guaranteed=1&' : ''}server=${S.server.id}`;
+  const url = r ? (pages ? `/item/${slugOf(item(r.p)[0])}?${q}` : `${MODE_PAGE[S.mode].path}?item=${slugOf(item(r.p)[0])}&${q}`)
+    : pages && PAGE_ITEM ? '/item/' + PAGE_ITEM : MODE_PAGE[S.mode].path;
   if(location.pathname + location.search !== url) try{ history.replaceState(null, '', url) }catch(e){}
 }
 const copyLink = () => LINKS() ? '<button type="button" class="chip copylink" data-copylink>copy link</button>' : '';
@@ -906,7 +921,19 @@ function render(...args){
   const after = row();
   if(top != null && after) window.scrollBy(0, after.getBoundingClientRect().top - top);
   if(LINK.scroll != null){ if(after) $('#q').scrollIntoView({block: 'start'}); LINK.scroll = null }  // the search box, then the item
-  syncUrl();
+  syncUrl(); itemCost();
+}
+// An item page's card: what one costs on this server (the cheapest recipe, plus the guaranteed one if it has one)
+function itemCost(){
+  const el = $('#itemCost'); if(!el) return;
+  const es = S.mode === 'single' && S.server ? RECIPES.filter(r => slugOf(item(r.p)[0]) === PAGE_ITEM).map(evaluate) : [];
+  const best = (list) => list.map(e => [e, costOfOne(e)]).filter(([, c]) => c != null).sort((a, b) => a[1] - b[1])[0];
+  const old = best(es.filter(e => !e.r.g)), g = best(es.filter(e => e.r.g));
+  el.hidden = !es.length;
+  if(!es.length) return;
+  const at = ([e]) => e.s.locked ? ` at ${esc(pl(e.r.prof))} Lv ${e.r.ml}` : '';
+  el.innerHTML = (old || g ? `On ${esc(S.server.name)}: about <b>${kina((old || g)[1])}</b> Kina to make one${at(old || g)}${old && g ? `, or <b>${kina(g[1])}</b> with the guaranteed recipe` : ''}.`
+    : `Some prices are missing on ${esc(S.server.name)}.`) + ' <button type="button" class="chip" data-jump>see the breakdown</button>';
 }
 function renderRows(room = 99, pre = null, stacked = false){  // room: optional columns to try; pre: rows already evaluated and sorted; stacked: card layout
   if(!pre) memo = new Map(), HIDDEN_BY = new Map();
@@ -1229,7 +1256,8 @@ function xpOwnCount(){
 function syncMode(){
   document.querySelectorAll('.want-btn').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === S.mode));
   $('#focusProfit').hidden = S.mode !== 'profit';  // Profit card only when crafting in bulk to sell
-  if(MODE_PAGE[S.mode]){ $('#tagline').textContent = MODE_PAGE[S.mode].tagline; document.title = MODE_PAGE[S.mode].title }
+  if(MODE_PAGE[S.mode]){ $('#tagline').textContent = MODE_PAGE[S.mode].tagline; if(!PAGE_ITEM) document.title = MODE_PAGE[S.mode].title }
+  if($('#itemCard')) $('#itemCard').hidden = S.mode !== 'single';
   $('#focusExp').hidden = S.mode !== 'exp';
   $('#prof').hidden = S.mode === 'exp';
   document.querySelectorAll('#xpStrategy button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === S.xpStrategy));
@@ -1242,6 +1270,7 @@ function syncMode(){
 }
 function setMode(m){
   if(m === S.mode) return;
+  if(PAGE_ITEM && S.hosted && MODE_PAGE[m]){ location.href = MODE_PAGE[m].path; return }  // leave the item page for the mode's own
   store.set(colsKey(), S.cols); store.set(sortKey(), S.sort);
   S.mode = m;
   // the hosted site and serve.py have a page per mode; elsewhere (the claude.ai copy) the address stays
@@ -1416,6 +1445,7 @@ function buildSettings(){
   rowsEl.addEventListener('change', ev => { const k = ev.target.dataset.manual; if(k){ const v = +ev.target.value; if(v > 0) S.manual[k] = v; else delete S.manual[k]; store.set('manual', S.manual); manualCount(); render() } });
   $('#clearManual').addEventListener('click', () => { S.manual = {}; store.set('manual', S.manual); manualCount(); render() });
   manualCount();
+  document.addEventListener('click', ev => { if(ev.target.closest('[data-jump]')) $('#q').scrollIntoView({block: 'start'}) });
 }
 function manualCount(){
   const keys = Object.keys(S.manual);
@@ -1429,7 +1459,7 @@ function serverPicker(){
   row.innerHTML = `<label for="server" style="flex:0 0 auto">Server</label><select id="server">${list.map(s => `<option value="${s[0]}"${s[0] === S.server.id ? ' selected' : ''}>${esc(s[1])} · ${esc(s[2])} · ${esc(s[3])}</option>`).join('')}</select>`;
   $('#server').addEventListener('change', ev => loadPrices(+ev.target.value));
 }
-async function loadLive(id){
+async function loadLive(id, remember = true){
   const s = S.data.servers.find(x => x[0] === id);
   $('#status').innerHTML = '<span class="pill">Fetching prices…</span>';
   try{
@@ -1438,7 +1468,7 @@ async function loadLive(id){
     const j = await res.json();
     S.prices = {}; let latest = null;
     for(const m of j.items){ S.prices[m.item_key] = [m.price, m.listings, m.last_price, m.last_seen_at]; if(m.captured_at && (!latest || m.captured_at > latest)) latest = m.captured_at }
-    S.server = {id, name:s[1], region:s[2], faction:s[3]}; S.pricesAt = latest; S.fetchedAt = new Date().toISOString(); store.set('server', id); S.liveOk = true;
+    S.server = {id, name:s[1], region:s[2], faction:s[3]}; S.pricesAt = latest; S.fetchedAt = new Date().toISOString(); if(remember) store.set('server', id); S.liveOk = true;
   }catch(e){
     S.liveOk = false;  // keep whatever prices we had; the status pill says so
   }
@@ -1446,14 +1476,14 @@ async function loadLive(id){
   pollPrices(id);
 }
 // Hosted site: prices/<server>.json is rebuilt every hour (from :15, live by about :30), plus each server's weekly sale speeds
-async function loadHosted(id){
+async function loadHosted(id, remember = true){
   const s = S.data.servers.find(x => x[0] === id);
   $('#status').innerHTML = '<span class="pill">Fetching prices…</span>';
   try{
     const get = (f, must) => fetch(f, {cache:'no-cache'}).then(r => { if(!r.ok) throw new Error(r.status); return r.json() }).catch(e => { if(must) throw e; return null });
-    const [p, v] = await Promise.all([get(`prices/${id}.json`, true), (S.hosted.speeds || []).includes(id) ? get(`speeds/${id}.json`) : null]);
+    const [p, v] = await Promise.all([get(`${AT}prices/${id}.json`, true), (S.hosted.speeds || []).includes(id) ? get(`${AT}speeds/${id}.json`) : null]);
     S.prices = p.prices; S.data.velocity = v ? v.v : {};
-    S.server = {id, name:s[1], region:s[2], faction:s[3]}; S.pricesAt = p.captured; S.fetchedAt = p.fetched; store.set('server', id); S.liveOk = true;
+    S.server = {id, name:s[1], region:s[2], faction:s[3]}; S.pricesAt = p.captured; S.fetchedAt = p.fetched; if(remember) store.set('server', id); S.liveOk = true;
   }catch(e){
     S.liveOk = false;
   }
@@ -1476,13 +1506,13 @@ function pollPrices(id){
 }
 async function boot(){
   try{
-    S.data = await (await fetch('data.json', {cache:'no-cache'})).json();  // recipes, success tables, supply requests
+    S.data = await (await fetch(AT + 'data.json', {cache:'no-cache'})).json();  // recipes, success tables, supply requests
   }catch(e){ $('#rows').innerHTML = '<tr><td colspan="8" class="empty">The recipe data did not load. Reload the page to try again.</td></tr>'; return }
   S.server = S.data.server; S.prices = {};
-  if(!LIVE){ try{ const r = await fetch('prices/index.json', {cache:'no-cache'}); if(r.ok) S.hosted = await r.json() }catch(e){} }
+  if(!LIVE){ try{ const r = await fetch(AT + 'prices/index.json', {cache:'no-cache'}); if(r.ok) S.hosted = await r.json() }catch(e){} }
   if(!S.hosted){  // local: one server's prices and sale speeds, rebuilt every 12 hours (the site has its own)
     try{
-      const snap = await (await fetch('snapshot.json', {cache:'no-cache'})).json();
+      const snap = await (await fetch(AT + 'snapshot.json', {cache:'no-cache'})).json();
       Object.assign(S.data, {built: snap.built, velocity: snap.velocity}); S.server = snap.server; S.prices = snap.prices;
       S.pricesAt = Object.values(S.prices).reduce((m, p) => p[3] && p[3] > m ? p[3] : m, '') || snap.built;
       S.fetchedAt = snap.built;
@@ -1493,8 +1523,19 @@ async function boot(){
   // the first drawing waits for the prices, so the list doesn't flash "price missing"
   LINK.ready = true;  // the first drawing after this opens a linked item
   const known = id => id && (LIVE ? S.data.servers.some(s => s[0] === id) : S.hosted.servers.includes(id));
-  if(LIVE) await loadLive(known(LINK.server) ? LINK.server : store.get('server', S.server.id));
-  else if(S.hosted && S.hosted.servers.length){ const want = known(LINK.server) ? LINK.server : store.get('server', S.server.id); await loadHosted(S.hosted.servers.includes(want) ? want : S.hosted.servers[0]) }
+  if(LIVE || (S.hosted && S.hosted.servers.length)){
+    let id = known(LINK.server) ? LINK.server : store.get('server', S.server.id), remember = true;
+    if(!known(id)) id = LIVE ? S.server.id : S.hosted.servers[0];
+    // a linked item of the other faction only (Star vs True Dragon Lord gear, say): show it on a server of that
+    // faction in the same region, without making that your server
+    const facOf = sid => (S.data.servers.find(s => s[0] === sid) || [])[3], raceOf = sid => facOf(sid) === 'Elyos' ? 'Light' : 'Dark';
+    const races = new Set(LINK.item ? S.data.recipes.filter(r => slugOf(item(r.p)[0]) === LINK.item).map(r => r.race) : []);
+    if(races.size && !races.has(raceOf(id))){
+      const twin = id + (facOf(id) === 'Elyos' ? 1000 : -1000), other = S.data.servers.map(s => s[0]).filter(sid => known(sid) && races.has(raceOf(sid)));
+      if(other.length){ id = known(twin) ? twin : other[0]; remember = false }
+    }
+    await (LIVE ? loadLive : loadHosted)(id, remember);
+  }
   else { statusBar(); render() }
 }
 boot();

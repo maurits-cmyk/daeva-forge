@@ -1,6 +1,6 @@
 """Build the hosted site (Cloudflare Workers static assets) and its price files.
 
-  python hosting.py build    # assemble dist/: the two pages, data.json, icons, sale speeds, robots.txt, sitemap
+  python hosting.py build    # assemble dist/: the two pages, a page per item, data.json, icons, sale speeds, robots.txt, sitemap
   python hosting.py prices   # current asks for the servers in site/servers.txt -> dist/prices/ (hourly; or give ids)
   python hosting.py speeds   # sale speeds for today's seventh of the servers -> site/speeds/ (daily; committed)
   python hosting.py due      # exit 0 if the live prices predate this hour's capture (the fallback run is needed)
@@ -12,7 +12,7 @@ tables and supply requests change rarely: rebuild app/data.json locally with bui
 Aion2Market hasn't answered our request (2026-10-20), so we keep our load on it low and identifiable: one
 request per server per hour, spaced out, and a User-Agent saying who we are and how to reach us.
 """
-import html, json, shutil, sys, time
+import html, json, re, shutil, sys, time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -56,18 +56,28 @@ def wrap_page(body, head=''):
             + head + '<style>body{margin:0}[hidden]{display:none!important}</style></head><body>' + body + '</body></html>')
 
 
-def page(mode):
-    """One hosted page: its own title, description, canonical address, link-preview card and structured data."""
-    p, e = PAGES[mode], lambda s: html.escape(s, quote=True)
+def page(p, card=''):
+    """One hosted page: its own title, description, canonical address, link-preview card and structured data.
+    An item page (card given) has the item card above the calculator, and the item's name as its h1."""
+    e = lambda s: html.escape(s, quote=True)
     body = (APP / 'index.html').read_text(encoding='utf8')
     # the body starts with the artifact's <title> and icon links; the hosted page puts its own in <head>
     start = body.index('<link rel="apple-touch-icon"'); start = body.index('>', start) + 1
     body = body[start:].replace('<small id="tagline">AION 2 crafting calculator</small>', f'<small id="tagline">{e(p["tagline"])}</small>')
+    if card:
+        h = body.index('<h1>'); body = body[:h] + '<p class="h1">' + body[h + 4:].replace('</h1>', '</p>', 1)
+        anchor = '<section class="settings foldcard" aria-label="General settings">'
+        assert anchor in body
+        body = body.replace(anchor, card + '\n\n  ' + anchor, 1)
     url = SITE_URL + p['path']
     ld = [{'@context': 'https://schema.org', '@type': 'WebApplication', 'name': 'Daeva Forge', 'url': url,
            'applicationCategory': 'GameApplication', 'operatingSystem': 'Any', 'description': p['description'],
            'inLanguage': 'en', 'isAccessibleForFree': True, 'about': {'@type': 'VideoGame', 'name': 'AION 2'},
            'offers': {'@type': 'Offer', 'price': '0', 'priceCurrency': 'USD'}}]
+    if card:
+        ld = [{'@context': 'https://schema.org', '@type': 'BreadcrumbList', 'itemListElement': [
+            {'@type': 'ListItem', 'position': 1, 'name': 'Daeva Forge', 'item': SITE_URL + '/'},
+            {'@type': 'ListItem', 'position': 2, 'name': p['name'], 'item': url}]}]
     if p['path'] == '/':  # the site's name in Google results
         ld.append({'@context': 'https://schema.org', '@type': 'WebSite', 'name': 'Daeva Forge', 'url': SITE_URL + '/'})
     head = (f'<title>{e(p["title"])}</title><meta name="description" content="{e(p["description"])}">'
@@ -82,6 +92,85 @@ def page(mode):
             '<meta name="twitter:card" content="summary_large_image">'
             f'<script type="application/ld+json">{json.dumps(ld)}</script>')
     return wrap_page(body, head)
+
+
+# Item pages: /item/<name> for every item the calculator opens in "specific items" mode (app/index.html's slugOf
+# and indexRecipes filter must match). Static facts only (recipes, what uses it); the calculator below adds prices.
+QUEST_TOOL = re.compile(r'^(Novice|Professional) .+ \(Bound\)$')   # as in app/index.html
+PROF_LABEL = {'Tailoring': 'Armorsmithing', 'Jewelcrafting': 'Handicrafting'}
+FACTION = {'Light': 'Elyos', 'Dark': 'Asmodian'}
+MAX_USES = 24
+
+
+def slug_of(name):
+    return re.sub(r'[^a-z0-9]+', '-', re.sub(r"['’]", '', name.lower())).strip('-')
+
+
+def item_pages(data):
+    """{slug: page fields, with the card's html} for every craftable item."""
+    e = lambda s: html.escape(s, quote=True)
+    name = lambda k: data['items'].get(str(k), [str(k)])[0]
+    recs = [r for r in data['recipes'] if (r['ml'] > 0 or r.get('tr') or r.get('g')) and not QUEST_TOOL.match(name(r['p']))]
+    by = {}
+    for r in recs:
+        by.setdefault(slug_of(name(r['p'])), []).append(r)
+    link = lambda k: f'<a href="/item/{slug_of(name(k))}">{e(name(k))}</a>' if slug_of(name(k)) in by else e(name(k))
+    uses, combos = {}, {}   # material -> products made from it; Combo product -> what Combos into it
+    for r in recs:
+        if r.get('g'):
+            continue
+        for k, _ in r['c']:
+            uses.setdefault(slug_of(name(k)), set()).add(r['p'])
+        if r['combo']:
+            if r['combo']['p'] != r['p']:   # some Combos just make extra of the same item
+                combos.setdefault(slug_of(name(r['combo']['p'])), set()).add(r['p'])
+    out = {}
+    for slug, rs in sorted(by.items()):
+        first = min(rs, key=lambda r: (bool(r.get('g')), r['ml']))
+        nm, grade = name(first['p']), data['items'].get(str(first['p']), ['', ''])[1] or 'Common'
+        races = {r['race'] for r in rs}
+        # one line per distinct recipe: the two factions' versions usually match and share a line
+        lines = {}
+        for r in sorted((r for r in rs if not r.get('g')), key=lambda r: (r['ml'], r['prof'], r['race'])):
+            key = (r['prof'], r['ml'], r.get('tr'), r['y'], tuple(sorted((name(k), q) for k, q in r['c'])),
+                   (name(r['combo']['p']), r['combo']['pct']) if r['combo'] else None)
+            lines.setdefault(key, [r, set()])[1].add(r['race'])
+        items = []
+        for (prof, ml, tr, y, _, _), (r, rr) in lines.items():
+            head = f'{PROF_LABEL.get(prof, prof)} {"transfer crafting" if tr else "Lv " + str(ml)}'
+            who = f' ({FACTION[next(iter(rr))]})' if len(rr) < len(races) else ''
+            mats = ', '.join(f'{q} × {link(k)}' for k, q in r['c'])
+            extra = (f'; makes {y}' if y > 1 else '') + ('; always succeeds' if tr else
+                     f'; Combo {r["combo"]["pct"]}%: {link(r["combo"]["p"])}' if r['combo'] else '')
+            items.append(f'<li><b>{e(head)}</b>{who}: {mats}{extra}</li>')
+        notes = []
+        if any(r.get('g') for r in rs):
+            notes.append(f'Since the Nov 4 patch it also has a <a href="/item/{slug}?guaranteed=1">guaranteed recipe</a>: '
+                         'same materials, always succeeds, never Combos, makes Bound gear.')
+        if slug in combos:
+            notes.append('Also comes from a Combo when crafting ' + ', '.join(link(k) for k in sorted(combos[slug], key=name)) + '.')
+        used = sorted({slug_of(name(k)): k for k in uses.get(slug, ())}.values(), key=name)
+        if used:
+            more = f' and {len(used) - MAX_USES} more' if len(used) > MAX_USES else ''
+            notes.append('<b>Used to make</b>: ' + ', '.join(link(k) for k in used[:MAX_USES]) + more + '.')
+        only = f' {FACTION[next(iter(races))]} only.' if len(races) == 1 else ''
+        card = (f'<section class="settings itempage" id="itemCard" aria-label="{e(nm)}">\n'
+                f'    <h1 class="card-title"><span><span class="g-{e(grade)}">{e(nm)}</span>: crafting cost</span></h1>\n'
+                f'    <p>What one {e(nm)} costs to craft in AION 2 on your server, failed attempts included.{only} '
+                'The calculator below opens it with current market prices: set your server and mastery levels.</p>\n'
+                '    <p class="itemcost" id="itemCost" hidden></p>\n'
+                f'    <p><b>Recipe{"s" if len(items) > 1 else ""}</b> (materials per attempt):</p>\n'
+                f'    <ul>{"".join(items)}</ul>\n'
+                + ''.join(f'    <p>{n}</p>\n' for n in notes)
+                + '  </section>')
+        prof = PROF_LABEL.get(first['prof'], first['prof'])
+        level = 'transfer crafting' if first.get('tr') else f'Lv {first["ml"]}'
+        out[slug] = {'file': f'item/{slug}.html', 'path': f'/item/{slug}', 'name': nm, 'tagline': 'AION 2 crafting calculator',
+                     'title': f'{nm}: AION 2 Crafting Cost and Materials – Daeva Forge',
+                     'description': f"What {'an' if nm[0] in 'AEIOU' else 'a'} {nm} costs to craft in AION 2 at your server's market prices: {prof} {level}, "
+                                    'its materials, success chance and Combo, failed attempts included. Free calculator.',
+                     'card': card}
+    return out
 
 
 def servers():
@@ -99,8 +188,12 @@ def now():
 def build():
     shutil.rmtree(DIST, ignore_errors=True)
     DIST.mkdir()
-    for mode, p in PAGES.items():
-        (DIST / p['file']).write_text(page(mode), encoding='utf8')
+    for p in PAGES.values():
+        (DIST / p['file']).write_text(page(p), encoding='utf8')
+    items = item_pages(json.load(open(APP / 'data.json', encoding='utf8')))
+    (DIST / 'item').mkdir()
+    for p in items.values():
+        (DIST / p['file']).write_text(page(p, p['card']), encoding='utf8')
     for f in ('data.json', 'favicon.svg', 'favicon.ico', 'apple-touch-icon.png', 'og.png', 'BingSiteAuth.xml'):  # last: Bing Webmaster Tools verification
         shutil.copy(APP / f, DIST / f)
     if (SITE / 'speeds').exists():
@@ -110,8 +203,9 @@ def build():
     day = datetime.now(timezone.utc).date().isoformat()
     (DIST / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
                                       + ''.join(f'  <url><loc>{SITE_URL}{p["path"]}</loc><lastmod>{day}</lastmod></url>\n' for p in PAGES.values())
+                                      + ''.join(f'  <url><loc>{SITE_URL}{p["path"]}</loc></url>\n' for p in items.values())
                                       + '</urlset>\n')
-    print(f'dist/ ready ({sum(f.stat().st_size for f in DIST.rglob("*") if f.is_file()) // 1024} KB)')
+    print(f'{len(items)} item pages; dist/ ready ({sum(f.stat().st_size for f in DIST.rglob("*") if f.is_file()) // 1024} KB)')
 
 
 def market(server_id, keys, tries=5):
