@@ -185,7 +185,8 @@ tr.sheet>td{background:rgba(5,6,9,.55);padding:0;border-bottom:1px solid var(--a
 .sheetin tr.foldable:hover .fold{color:#fff}
 .foldbar{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
 .foldbar .chip{margin-left:0}
-.foldbar .clearown{margin-left:auto}
+.foldbar .clearown,.foldbar .copylink{margin-left:auto}
+.foldbar .clearown + .copylink{margin-left:0}
 .ownbox{display:inline-flex;align-items:center;gap:2px}
 .ownx{font:inherit;font-size:15px;line-height:1;width:16px;height:18px;flex:0 0 16px;padding:0;border:0;border-radius:2px;background:transparent;color:var(--muted);cursor:pointer}
 .ownx:hover{color:#fff;background:rgba(255,255,255,.08)}
@@ -489,6 +490,25 @@ const MODE_PAGE = {
   single: {path: '/', tagline: 'AION 2 crafting calculator', title: 'AION 2 Crafting Calculator with Market Prices – Daeva Forge (unofficial)'},
   profit: {path: '/profit', tagline: 'AION 2 crafting for profit', title: 'AION 2 Crafting for Profit: Best Recipes per Server – Daeva Forge (unofficial)'},
 };
+// Item links: /?item=<name>&server=<id> opens that item's recipe on that server (&guaranteed=1 for the guaranteed
+// one). The address follows the open recipe, so it can be copied and shared as it is.
+const LINK = (() => { try{ const p = new URLSearchParams(location.search); return {item: p.get('item'), g: p.get('guaranteed') === '1', server: +p.get('server') || null} }catch(e){ return {} } })();
+const slugOf = n => n.toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const LINKS = () => S.hosted || LIVE;  // the claude.ai copy has no address of its own
+function openLinked(){
+  const want = LINK.item; LINK.item = null;
+  const r = RECIPES.filter(r => slugOf(item(r.p)[0]) === want).sort((a, b) => (!!b.g === LINK.g) - (!!a.g === LINK.g))[0];
+  if(!r) return;
+  // search for it, so its group opens and the recipes around it (its upgrades, what it's made from) show too
+  S.open = LINK.scroll = r.id; S.q = item(r.p)[0]; $('#q').value = S.q;
+}
+function syncUrl(){
+  if(!LINKS() || !MODE_PAGE[S.mode]) return;
+  const r = S.open != null && RECIPES.find(r => r.id === S.open);
+  const url = MODE_PAGE[S.mode].path + (r ? `?item=${slugOf(item(r.p)[0])}${r.g ? '&guaranteed=1' : ''}&server=${S.server.id}` : '');
+  if(location.pathname + location.search !== url) try{ history.replaceState(null, '', url) }catch(e){}
+}
+const copyLink = () => LINKS() ? '<button type="button" class="chip copylink" data-copylink>copy link</button>' : '';
 
 /* ---------- formatting ---------- */
 function kina(v){
@@ -880,10 +900,13 @@ function colMenu(){
 // row at the same height on screen, so the page follows it instead of it jumping out of view.
 function render(...args){
   const row = () => S.open != null && document.querySelector(`tr.rec[data-id="${S.open}"]`);
+  if(LINK.item && LINK.ready) openLinked();
   const before = row(), top = before ? before.getBoundingClientRect().top : null;
   renderRows(...args);
   const after = row();
   if(top != null && after) window.scrollBy(0, after.getBoundingClientRect().top - top);
+  if(LINK.scroll != null){ if(after) $('#q').scrollIntoView({block: 'start'}); LINK.scroll = null }  // the search box, then the item
+  syncUrl();
 }
 function renderRows(room = 99, pre = null, stacked = false){  // room: optional columns to try; pre: rows already evaluated and sorted; stacked: card layout
   if(!pre) memo = new Map(), HIDDEN_BY = new Map();
@@ -1111,7 +1134,7 @@ function singleSheet(e){
   return `<div class="sheetin single"><div>
     <h3>Materials for one ${esc(e.name)}${r.y > 1 ? ' (one craft makes ' + r.y + ')' : ''}</h3>
     <p class="notes" style="margin:0 0 10px">${s.locked ? `<span class="loss">Needs ${esc(pl(r.prof))} Lv ${r.ml}; you're at ${S.mastery[r.prof] || 1}.</span> ` : ''}${r.tr ? transferNote(r, skip) : r.g ? 'Guaranteed craft: always succeeds, never Combos and makes Bound gear.' : s.p ? `${pct(s.p)} success, so about ${fmtQty(A)} attempt${A === 1 ? '' : 's'}.` : 'Success chance unknown: quantities are for one attempt.'}</p>
-    ${foldBar(nodes, clearOwned)}<div class="mtable"><table><thead><tr><th>Material</th><th class="num q">Qty</th><th>Buy or craft (each)</th><th class="num own">Owned</th><th class="num">Cost</th></tr></thead>
+    ${foldBar(nodes, clearOwned + copyLink())}<div class="mtable"><table><thead><tr><th>Material</th><th class="num q">Qty</th><th>Buy or craft (each)</th><th class="num own">Owned</th><th class="num">Cost</th></tr></thead>
     <tbody>${lines}<tr><td colspan="4"><b>Expected cost</b>${fee ? ' (incl. fees ' + kina(fee) + ')' : ''}${clearOwned ? ' ' + clearOwned : ''}</td><td class="num"><b>${kina(ctx.sum + fee)}</b></td></tr></tbody></table></div>
     ${e.missing.length ? `<div class="notes" style="margin-top:10px"><p class="loss">No price for ${e.missing.map(k => esc(item(k)[0])).join(', ')}. Enter one to complete the cost.</p></div>` : ''}
   </div></div>`;
@@ -1122,7 +1145,7 @@ function sheet(e){
   const bp = e.base ? net(e.base.v) : null, up = e.up ? net(e.up.v) : null;
   return `<div class="sheetin">
     <div><h3>Materials per attempt</h3>
-      ${foldBar(nodes)}<div class="mtable"><table><thead><tr><th>Material</th><th class="num q">Qty</th><th>Buy or craft (each)</th><th class="num">Cost</th></tr></thead>
+      ${foldBar(nodes, copyLink())}<div class="mtable"><table><thead><tr><th>Material</th><th class="num q">Qty</th><th>Buy or craft (each)</th><th class="num">Cost</th></tr></thead>
       <tbody>${lines}<tr><td colspan="3"><b>Total per attempt</b>${r.fee ? ' (incl. fee ' + kina(r.fee) + ')' : ''}</td><td class="num"><b>${kina(e.cost)}</b></td></tr></tbody></table></div>
       <div class="notes" style="margin-top:10px">
         ${e.missing.length ? `<p class="loss">No price for ${e.missing.map(k => esc(item(k)[0])).join(', ')}. Enter one to complete the cost.</p>` : ''}
@@ -1352,6 +1375,14 @@ function buildSettings(){
   document.addEventListener('keydown', ev => { if(ev.key === 'Escape' && !pop.hidden){ openPop(false); btn.focus() } });
   const rowsEl = $('#rows');
   rowsEl.addEventListener('click', ev => {
+    const cl = ev.target.closest('[data-copylink]');
+    if(cl){
+      const done = t => { cl.textContent = t; setTimeout(() => cl.textContent = 'copy link', 1500) };
+      // some in-app browsers block the clipboard API: fall back to the old copy command
+      const old = () => { const t = document.createElement('textarea'); t.value = location.href; t.style.cssText = 'position:fixed;opacity:0'; document.body.append(t); t.select(); const ok = document.execCommand('copy'); t.remove(); if(!ok) throw 0 };
+      (navigator.clipboard ? navigator.clipboard.writeText(location.href).catch(old) : Promise.resolve().then(old)).then(() => done('link copied'), () => done('copy failed'));
+      return;
+    }
     const grp = ev.target.closest('[data-grp]');
     if(grp){
       const t = grp.dataset.grp, q = S.q.trim().toLowerCase(), folded = tierFolded(t, q);
@@ -1460,8 +1491,10 @@ async function boot(){
   setInterval(statusBar, 6e4);  // keep "updated X min ago" current
   buildSettings(); foldCards(); indexRecipes(); serverPicker(); feedbackForm();
   // the first drawing waits for the prices, so the list doesn't flash "price missing"
-  if(LIVE) await loadLive(store.get('server', S.server.id));
-  else if(S.hosted && S.hosted.servers.length){ const want = store.get('server', S.server.id); await loadHosted(S.hosted.servers.includes(want) ? want : S.hosted.servers[0]) }
+  LINK.ready = true;  // the first drawing after this opens a linked item
+  const known = id => id && (LIVE ? S.data.servers.some(s => s[0] === id) : S.hosted.servers.includes(id));
+  if(LIVE) await loadLive(known(LINK.server) ? LINK.server : store.get('server', S.server.id));
+  else if(S.hosted && S.hosted.servers.length){ const want = known(LINK.server) ? LINK.server : store.get('server', S.server.id); await loadHosted(S.hosted.servers.includes(want) ? want : S.hosted.servers[0]) }
   else { statusBar(); render() }
 }
 boot();
