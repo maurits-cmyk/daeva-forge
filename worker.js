@@ -19,6 +19,7 @@ export default {
   },
   // GH_DISPATCH: a fine-grained GitHub token for this repository only, with Actions read and write
   async scheduled(event, env) {
+    try { await staleAlarm(env) } catch (e) { console.log('staleness check failed: ' + e) }
     if (!env.GH_DISPATCH) throw new Error("GH_DISPATCH is not set: the hourly price run waits for GitHub's late schedule");
     const res = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/prices.yml/dispatches`, {
       method: 'POST', body: JSON.stringify({ref: 'main'}),
@@ -46,12 +47,46 @@ async function feedback(req, env) {
   await caches.default.put(key, new Response('1', {headers: {'Cache-Control': 'max-age=60'}}));
 
   const body = [msg, '', '---', `From: ${name || '(no name)'}${replyTo ? ' <' + replyTo + '>' : ''}`, `Server: ${server || '(unknown)'}`, `Browser: ${ua}`].join('\n');
+  try {
+    await mail(env, `[Daeva Forge] ${kind}: ${msg.slice(0, 60)}`, body, replyTo, 'Daeva Forge feedback');
+  } catch (e) {
+    return json({error: 'Sending failed. Please try again later.'}, 502);
+  }
+  return json({ok: true});
+}
+
+// The prices' age is Aion2Market's newest capture among all servers (prices/index.json, written by hosting.py).
+// The cron runs hourly, so mailing in the hour the prices turn 3 hours old, then every 12 hours, sends one
+// message when they go stale and a reminder twice a day while they stay that way, with no state to keep.
+const STALE_HOURS = 3, REMIND_HOURS = 12;
+async function staleAlarm(env) {
+  if (!env.FEEDBACK_TO) return;
+  const res = await env.ASSETS.fetch(new Request('https://daevaforge.com/prices/index.json'));
+  if (!res.ok) throw new Error(`prices/index.json: ${res.status}`);
+  const idx = await res.json(), at = idx.captured || idx.fetched;
+  const hours = Math.floor((Date.now() - new Date(at).getTime()) / 36e5);
+  if (hours < STALE_HOURS || (hours - STALE_HOURS) % REMIND_HOURS) return;
+  await mail(env, `[Daeva Forge] Prices are ${hours} hours old`, [
+    `The newest prices on daevaforge.com were captured ${hours} hours ago (${at}).`,
+    `Last price run: ${idx.fetched}; ${(idx.kept || []).length} of ${idx.servers.length} servers kept their previous prices.`,
+    '',
+    'Things to check:',
+    `- GitHub Actions, the "prices" workflow: https://github.com/${REPO}/actions/workflows/prices.yml`,
+    '- the Worker\'s logs in Cloudflare (a GH_DISPATCH error means the token stopped working)',
+    '- whether aion2.exchange itself has new prices',
+    '',
+    `This repeats every ${REMIND_HOURS} hours while the prices stay old.`,
+  ].join('\n'));
+}
+
+// Mail to the maintainer (the FEEDBACK_TO secret); the To header shows SHOWN_TO, so Gmail replies from it
+async function mail(env, subject, body, replyTo = '', sender = 'Daeva Forge') {
   const one = s => s.replace(/[\r\n]+/g, ' ');  // no header injection
   const raw = [
-    `From: Daeva Forge feedback <${FROM}>`,
+    `From: ${sender} <${FROM}>`,
     `To: <${SHOWN_TO}>`,
     replyTo ? `Reply-To: <${one(replyTo)}>` : null,
-    `Subject: ${mimeWord(one(`[Daeva Forge] ${kind}: ${msg.slice(0, 60)}`))}`,
+    `Subject: ${mimeWord(one(subject))}`,
     `Message-ID: <${crypto.randomUUID()}@daevaforge.com>`,
     `Date: ${new Date().toUTCString()}`,
     'MIME-Version: 1.0',
@@ -60,12 +95,7 @@ async function feedback(req, env) {
     '',
     b64(body).replace(/.{76}/g, '$&\r\n'),
   ].filter(l => l !== null).join('\r\n');
-  try {
-    await env.FEEDBACK.send(new EmailMessage(FROM, env.FEEDBACK_TO, raw));
-  } catch (e) {
-    return json({error: 'Sending failed. Please try again later.'}, 502);
-  }
-  return json({ok: true});
+  await env.FEEDBACK.send(new EmailMessage(FROM, env.FEEDBACK_TO, raw));
 }
 
 function b64(s) {
