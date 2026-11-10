@@ -221,6 +221,7 @@ span.ownx{display:inline-block;cursor:default}
 .howto h3{font-size:13px;font-weight:600;color:var(--ink);margin:14px 0 4px}
 .howto p{margin:0 0 8px;color:var(--muted);line-height:1.55}
 .howto a{color:var(--accent)}
+.allbtn{text-decoration:none;white-space:nowrap}
 /* item pages (/item/<name>, built by hosting.py): what the item takes, above the calculator */
 .itempage{display:block}
 .itempage h1.card-title{font-size:13px}
@@ -395,6 +396,7 @@ footer a{color:var(--accent)}
     <div class="row">
       <input type="search" id="q" placeholder="Search item or material" aria-label="Search recipes">
       <select id="prof" aria-label="Profession"><option value="">All professions</option></select>
+      <a class="btn allbtn" id="allItemsBtn" href="/items">All items</a>
     </div>
     <div class="row" style="flex:0 1 auto;justify-content:flex-end">
       <div class="summary" id="summary"></div>
@@ -1519,6 +1521,7 @@ async function boot(){
     }catch(e){}
   }
   setInterval(statusBar, 6e4);  // keep "updated X min ago" current
+  $('#allItemsBtn').hidden = !S.hosted;  // the item pages are on the hosted site only
   buildSettings(); foldCards(); indexRecipes(); serverPicker(); feedbackForm();
   // the first drawing waits for the prices, so the list doesn't flash "price missing"
   LINK.ready = true;  // the first drawing after this opens a linked item

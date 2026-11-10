@@ -169,8 +169,58 @@ def item_pages(data):
                      'title': f'{nm}: AION 2 Crafting Cost and Materials – Daeva Forge',
                      'description': f"What {'an' if nm[0] in 'AEIOU' else 'a'} {nm} costs to craft in AION 2 at your server's market prices: {prof} {level}, "
                                     'its materials, success chance and Combo, failed attempts included. Free calculator.',
-                     'card': card}
+                     'card': card, 'grade': grade, 'races': races,
+                     # for the all-items page: each profession that makes it, at its lowest level (transfer steps last)
+                     'profs': {PROF_LABEL.get(r['prof'], r['prof']): ('transfer', 1000 + r['tr']) if r.get('tr') else (f'Lv {r["ml"]}', r['ml'])
+                               for r in sorted(rs, key=lambda r: -r['ml']) if not r.get('g')}}
     return out
+
+
+def items_page(items):
+    """/items: every item page, by profession, so people and crawlers can find them from the home page."""
+    e = lambda s: html.escape(s, quote=True)
+    app = (APP / 'index.html').read_text(encoding='utf8')
+    style = app[app.index('<link rel="preconnect"'):app.index('</style>') + 8]   # the fonts and the stylesheet
+    header = app[app.index('<header>'):app.index('</header>') + 9]
+    header = re.sub(r'<div class="status".*?</div>', '', header).replace('<h1>', '<a class="h1 home" href="/">').replace('</h1>', '</a>')
+    footer = app[app.index('<footer>'):app.index('</footer>') + 9].replace('<p id="dataInfo"></p>', '')
+    sections = []
+    for prof in ('Blacksmithing', 'Armorsmithing', 'Handicrafting', 'Alchemy', 'Cooking'):
+        rows = sorted(((p['profs'][prof], slug, p) for slug, p in items.items() if prof in p['profs']), key=lambda x: (-x[0][1], x[2]['name']))
+        lis = ''.join((f'<li data-f="{FACTION[next(iter(p["races"]))]}">' if len(p['races']) == 1 else '<li>')
+                      + f'<a class="g-{e(p["grade"])}" href="{p["path"]}">{e(p["name"])}</a><span class="lv">{lv}'
+                      + (f' · {FACTION[next(iter(p["races"]))]}' if len(p['races']) == 1 else '') + '</span></li>'
+                      for (lv, _), slug, p in rows)
+        sections.append(f'<section class="settings allitems" aria-label="{prof}"><h2 class="card-title">{prof} <span class="n">{len(rows)}</span></h2>'
+                        f'<ul>{lis}</ul></section>')
+    css = ('<style>.home{color:inherit;text-decoration:none}.allitems{display:block}.allitems ul{columns:3 240px;column-gap:28px;margin:12px 0;padding:0;list-style:none}'
+           '.allitems li{break-inside:avoid;padding:3px 0;font-size:14px}.allitems a{text-decoration:none}.allitems a:hover{text-decoration:underline}'
+           '.allitems .lv{display:block;font-size:11.5px;color:var(--muted)}'
+           '[data-show=Elyos] li[data-f=Asmodian],[data-show=Asmodian] li[data-f=Elyos]{display:none}.intro .seg{margin:4px 0 12px}.card-title .n{margin-left:auto;color:var(--muted);font-weight:500}'
+           '.intro p{margin:10px 0;max-width:80ch;line-height:1.5}.intro a{color:var(--accent)}</style>')
+    body = (f'{style}{css}<div class="wrap">{header}'
+            '<section class="settings intro allitems"><h1 class="card-title">All craftable items</h1>'
+            f'<p>Every item Daeva Forge can price, {len(items)} in all, by profession, highest level first. Each page shows the recipe '
+            'and what one costs to craft on your server. Or go back to the <a href="/">calculator</a>.</p>'
+            '<div class="seg" role="group" aria-label="Faction"><button type="button" data-v="Elyos">Elyos</button>'
+            '<button type="button" data-v="Asmodian">Asmodian</button><button type="button" data-v="">Both</button></div></section>'
+            + ''.join(sections) + f'{footer}</div>'
+            # the faction switch starts on your server's (the calculator's saved server: 11xxx Elyos, 12xxx Asmodian)
+            '<script>(()=>{const get=k=>{try{return JSON.parse(localStorage.getItem("forge:"+k))}catch(e){return null}},'
+            'set=v=>{try{localStorage.setItem("forge:itemsFaction",JSON.stringify(v))}catch(e){}},sv=get("server"),'
+            'show=v=>{document.body.dataset.show=v;document.querySelectorAll(".seg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===v))};'
+            'let v=get("itemsFaction");if(v==null)v=sv?(String(sv)[1]==="1"?"Elyos":"Asmodian"):"";show(v);'
+            'document.querySelectorAll(".seg button").forEach(b=>b.addEventListener("click",()=>{show(b.dataset.v);set(b.dataset.v)}))})()</script>')
+    p = {'path': '/items', 'title': 'All AION 2 Craftable Items: Recipes and Crafting Costs – Daeva Forge',
+         'description': f'Every craftable item in AION 2, {len(items)} in all, by profession: recipes, materials and what each costs to craft on your server.'}
+    t = e(p['title']); d = e(p['description'])
+    head = (f'<title>{t}</title><meta name="description" content="{d}"><link rel="canonical" href="{SITE_URL}/items">'
+            '<link rel="icon" href="/favicon.ico" sizes="32x32"><link rel="icon" href="/favicon.svg" type="image/svg+xml">'
+            '<link rel="apple-touch-icon" href="/apple-touch-icon.png"><meta name="theme-color" content="#08090c">'
+            f'<meta property="og:type" content="website"><meta property="og:site_name" content="Daeva Forge"><meta property="og:title" content="{t}">'
+            f'<meta property="og:description" content="{d}"><meta property="og:url" content="{SITE_URL}/items"><meta property="og:image" content="{SITE_URL}/og.png">'
+            '<meta name="twitter:card" content="summary_large_image">')
+    return p, wrap_page(body, head)
 
 
 def servers():
@@ -194,6 +244,8 @@ def build():
     (DIST / 'item').mkdir()
     for p in items.values():
         (DIST / p['file']).write_text(page(p, p['card']), encoding='utf8')
+    index, doc = items_page(items)
+    (DIST / 'items.html').write_text(doc, encoding='utf8')
     for f in ('data.json', 'favicon.svg', 'favicon.ico', 'apple-touch-icon.png', 'og.png', 'BingSiteAuth.xml'):  # last: Bing Webmaster Tools verification
         shutil.copy(APP / f, DIST / f)
     if (SITE / 'speeds').exists():
@@ -202,7 +254,7 @@ def build():
     (DIST / 'robots.txt').write_text(f'User-agent: *\nDisallow: /api/\nAllow: /\nSitemap: {SITE_URL}/sitemap.xml\n')
     day = datetime.now(timezone.utc).date().isoformat()
     (DIST / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-                                      + ''.join(f'  <url><loc>{SITE_URL}{p["path"]}</loc><lastmod>{day}</lastmod></url>\n' for p in PAGES.values())
+                                      + ''.join(f'  <url><loc>{SITE_URL}{p["path"]}</loc><lastmod>{day}</lastmod></url>\n' for p in [*PAGES.values(), index])
                                       + ''.join(f'  <url><loc>{SITE_URL}{p["path"]}</loc></url>\n' for p in items.values())
                                       + '</urlset>\n')
     print(f'{len(items)} item pages; dist/ ready ({sum(f.stat().st_size for f in DIST.rglob("*") if f.is_file()) // 1024} KB)')
