@@ -229,6 +229,12 @@ span.ownx{display:inline-block;cursor:default}
 .itempage ul{padding-left:18px}
 .itempage li+li{margin-top:4px}
 .itempage a{color:var(--accent)}
+/* until a mastery level is first set: glowing level boxes (pulsing a few times), a line saying why, a chip on the card's title */
+#masteryBox.nudge legend{color:var(--cyan)}
+#masteryBox.nudge input[type=number]{border-color:rgba(95,214,232,.7);box-shadow:0 0 8px rgba(95,214,232,.25);animation:nudge 1.8s ease-in-out 3}
+@keyframes nudge{50%{border-color:var(--cyan);box-shadow:0 0 14px 2px rgba(95,214,232,.5)}}
+.nudgetext{color:var(--cyan);font-weight:600}
+.chip.nudgechip{color:var(--cyan);border-color:rgba(95,214,232,.5);letter-spacing:normal;text-transform:none;margin-left:10px}
 .itempage .itemcost{font-size:15px}
 .itempage .itemcost b{color:#fff}
 footer{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:12px}
@@ -273,7 +279,7 @@ footer a{color:var(--accent)}
   .owninline input.owned{width:40px}
   .opt{padding:2px 4px}
 }
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
 <div class="wrap">
@@ -286,12 +292,12 @@ footer a{color:var(--accent)}
 
   <section class="settings foldcard" aria-label="General settings">
     <details class="card" id="cardGeneral" open>
-      <summary class="card-title">General</summary>
+      <summary class="card-title">General<span class="chip nudgechip" id="nudgeChip" hidden>set your mastery</span></summary>
       <div class="card-body">
-    <fieldset>
+    <fieldset id="masteryBox">
       <legend>Mastery level</legend>
       <div class="mastery" id="mastery"></div>
-      <span class="hint">Use the number in brackets in-game (Professional Lv. 14 = 64).</span>
+      <span class="hint"><b class="nudgetext" id="nudgeText" hidden>Set your levels first: costs and success chances depend on them. </b>Use the number in brackets in-game (Professional Lv. 14 = 64).</span>
     </fieldset>
     <div class="stack">
     <fieldset>
@@ -1331,12 +1337,13 @@ function buildSettings(){
   PROFS.forEach(p => {
     const num = $('#m-' + p), sl = $('#r-' + p);
     const show = v => { num.value = sl.value = v; sl.style.setProperty('--p', (v - 1) / (MAX_MASTERY - 1) * 100 + '%') };
-    const commit = v => { S.mastery[p] = Math.max(1, Math.min(MAX_MASTERY, Math.round(+v) || 1)); show(S.mastery[p]); store.set('mastery', S.mastery); syncMode(); render() };
+    const commit = v => { S.mastery[p] = Math.max(1, Math.min(MAX_MASTERY, Math.round(+v) || 1)); show(S.mastery[p]); store.set('mastery', S.mastery); masteryNudge(); syncMode(); render() };
     show(S.mastery[p] || 1);
     sl.addEventListener('input', () => show(+sl.value));
     sl.addEventListener('change', () => commit(sl.value));
     num.addEventListener('change', () => commit(num.value));
   });
+  masteryNudge();
   $('#prof').innerHTML = '<option value="">All professions</option>' + PROFS.map(p => `<option value="${p}"${S.prof === p ? ' selected' : ''}>${pl(p)}</option>`).join('');
   $('#prof').addEventListener('change', ev => { S.prof = ev.target.value; store.set('prof', S.prof); render() });
   $('#tax').value = S.tax;
@@ -1448,6 +1455,12 @@ function buildSettings(){
   $('#clearManual').addEventListener('click', () => { S.manual = {}; store.set('manual', S.manual); manualCount(); render() });
   manualCount();
   document.addEventListener('click', ev => { if(ev.target.closest('[data-jump]')) $('#q').scrollIntoView({block: 'start'}) });
+}
+// Nudge until the mastery levels are first set (any change saves them): everything costs more at level 1
+function masteryNudge(){
+  const unset = store.get('mastery', null) == null;
+  $('#masteryBox').classList.toggle('nudge', unset);
+  $('#nudgeText').hidden = $('#nudgeChip').hidden = !unset;
 }
 function manualCount(){
   const keys = Object.keys(S.manual);
