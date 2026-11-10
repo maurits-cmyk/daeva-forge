@@ -504,6 +504,7 @@ footer a{color:var(--accent)}
 
   <footer>
     <p>Data: recipes and vendor prices from <a href="https://aion2hub.com/tools/crafting-calculator" target="_blank" rel="noopener">AION2 Hub</a>, success chances from <a href="https://probability.plaync.com/aion2/index" target="_blank" rel="noopener">NC's probability disclosure</a> and <a href="https://gamewith.ai/aion2/en" target="_blank" rel="noopener">GameWith</a>, supply requests from <a href="https://wikily.gg/aion-2" target="_blank" rel="noopener">wikily</a>, prices from <a href="https://aion2.exchange/" target="_blank" rel="noopener">Aion2Market</a>.</p>
+    <p id="guideLine" hidden>Guide: <a href="/guide/guaranteed-dragon-lord-recipe">guaranteed or old Dragon Lord recipe?</a></p>
     <p id="dataInfo"></p>
     <p class="legal">Unofficial fan site. Not affiliated with, endorsed or sponsored by NCSOFT. AION, AION 2 and NCSOFT are trademarks of NCSOFT Corporation; all other trademarks are the property of their respective owners.</p>
   </footer>
@@ -1648,7 +1649,7 @@ async function boot(){
     }catch(e){}
   }
   setInterval(statusBar, 6e4);  // keep "updated X min ago" current
-  $('#allItemsBtn').hidden = !S.hosted;  // the item pages are on the hosted site only
+  $('#allItemsBtn').hidden = $('#guideLine').hidden = !S.hosted;  // the item pages and guides are on the hosted site only
   if(!LINKS()) $('#homeLink').removeAttribute('href');  // the claude.ai copy has no home page to go to
   buildSettings(); foldCards(); indexRecipes(); serverPicker(); feedbackForm();
   // the first drawing waits for the prices, so the list doesn't flash "price missing"

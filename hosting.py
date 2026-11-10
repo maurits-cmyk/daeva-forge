@@ -90,9 +90,9 @@ def page(p, card=''):
             '<link rel="apple-touch-icon" href="/apple-touch-icon.png"><meta name="theme-color" content="#08090c">'
             f'<meta property="og:type" content="website"><meta property="og:site_name" content="Daeva Forge">'
             f'<meta property="og:title" content="{e(p["title"])}"><meta property="og:description" content="{e(p["description"])}">'
-            f'<meta property="og:url" content="{url}"><meta property="og:image" content="{SITE_URL}/og.png">'
+            f'<meta property="og:url" content="{url}"><meta property="og:image" content="{SITE_URL}{p.get("og", "/og.png")}">'
             '<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">'
-            '<meta property="og:image:alt" content="Daeva Forge, an AION 2 crafting calculator"><meta property="og:locale" content="en_US">'
+            f'<meta property="og:image:alt" content="{e(p["name"]) + ": crafting cost and materials, on " if p.get("og") else ""}Daeva Forge, an AION 2 crafting calculator"><meta property="og:locale" content="en_US">'
             '<meta name="twitter:card" content="summary_large_image">'
             f'<script type="application/ld+json">{json.dumps(ld)}</script>')
     return wrap_page(body, head)
@@ -166,7 +166,7 @@ def item_pages(data):
         facts = []
         if any(r.get('g') for r in rs):
             facts.append(f'<li>{icon("shield")}<span><a href="/item/{slug}?guaranteed=1">Guaranteed recipe</a>: '
-                         'same materials, 100%, no Combo, Bound</span></li>')
+                         f'same materials, 100%, no Combo, Bound · <a href="{GUIDE_LINK}">which to use?</a></span></li>')
         if slug in combos:
             facts.append(f'<li>{icon("spark")}<span><b>Combo from</b> ' + ', '.join(link(k) for k in sorted(combos[slug], key=name)) + '</span></li>')
         used = sorted({slug_of(name(k)): k for k in uses.get(slug, ())}.values(), key=name)
@@ -190,20 +190,65 @@ def item_pages(data):
                      'description': f"What {'an' if nm[0] in 'AEIOU' else 'a'} {nm} costs to craft in AION 2 at your server's market prices: {prof} {level}, "
                                     'its materials, success chance and Combo, failed attempts included. Free calculator.',
                      'card': card, 'grade': grade, 'races': races,
+                     **({'og': f'/og/{slug}.jpg'} if (APP / 'og' / f'{slug}.jpg').exists() else {}),  # make_og.py --items
                      # for the all-items page: each profession that makes it, at its lowest level (transfer steps last)
                      'profs': {PROF_LABEL.get(r['prof'], r['prof']): ('transfer', 1000 + r['tr']) if r.get('tr') else (f'Lv {r["ml"]}', r['ml'])
                                for r in sorted(rs, key=lambda r: -r['ml']) if not r.get('g')}}
     return out
 
 
+def shell():
+    """The app's fonts and stylesheet, its header (without the price status) and its footer, for the plain pages."""
+    app = (APP / 'index.html').read_text(encoding='utf8')
+    style = app[app.index('<link rel="preconnect"'):app.index('</style>') + 8]
+    header = app[app.index('<header>'):app.index('</header>') + 9]
+    header = re.sub(r'<div class="status".*?</div>', '', header).replace('<h1>', '<p class="h1">').replace('</h1>', '</p>')
+    footer = app[app.index('<footer>'):app.index('</footer>') + 9].replace('<p id="dataInfo"></p>', '').replace(' id="guideLine" hidden', '')
+    return style, header, footer
+
+
+def plain_head(p, image='/og.png'):
+    t, d = html.escape(p['title'], quote=True), html.escape(p['description'], quote=True)
+    return (f'<title>{t}</title><meta name="description" content="{d}"><link rel="canonical" href="{SITE_URL}{p["path"]}">'
+            '<link rel="icon" href="/favicon.ico" sizes="32x32"><link rel="icon" href="/favicon.svg" type="image/svg+xml">'
+            '<link rel="apple-touch-icon" href="/apple-touch-icon.png"><meta name="theme-color" content="#08090c">'
+            f'<meta property="og:type" content="website"><meta property="og:site_name" content="Daeva Forge"><meta property="og:title" content="{t}">'
+            f'<meta property="og:description" content="{d}"><meta property="og:url" content="{SITE_URL}{p["path"]}"><meta property="og:image" content="{SITE_URL}{image}">'
+            '<meta name="twitter:card" content="summary_large_image">')
+
+
+# Guides: a page each, from an html fragment in app/guides/. Linked only where they're relevant (no menu).
+GUIDES = {
+    'guaranteed-dragon-lord-recipe': {
+        'path': '/guide/guaranteed-dragon-lord-recipe',
+        'title': 'Guaranteed or Old Dragon Lord Recipe? AION 2 Crafting Costs Compared – Daeva Forge',
+        'description': 'AION 2 since the Nov 4 patch: what the guaranteed and the old Star and True Dragon Lord recipes really cost, '
+                       'failed attempts included, at each proficiency level, and which one gets you to item level 102 cheaper.'},
+}
+GUIDE_LINK = GUIDES['guaranteed-dragon-lord-recipe']['path']
+
+
+def guide_page(slug):
+    p = dict(GUIDES[slug], file=f'guide/{slug}.html')
+    style, header, footer = shell()
+    css = ('<style>.guide{display:block;max-width:900px}.guide p,.guide li{line-height:1.6;max-width:80ch}.guide a{color:var(--accent)}'
+           '.guide .lede{color:var(--muted);font-size:15px}.guide h2{font:400 22px/1.2 var(--f-display);margin:26px 0 8px;color:var(--ink)}'
+           '.guide h3{font-size:15px;margin:20px 0 6px}.guide h3 .muted{font-weight:400;font-size:13px;margin-left:6px}'
+           '.guide ul{padding-left:20px}.guide li+li{margin-top:6px}'
+           '.nums{width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums;margin:4px 0 10px}'
+           '.nums th,.nums td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--line);vertical-align:top}'
+           '.nums th{position:static;cursor:default;white-space:normal}.nums th:first-child,.nums td:first-child{text-align:left}'
+           '.nums .via{display:block;font-size:11.5px;color:var(--muted)}.guide .btn.go{margin:0 10px 6px 0;text-decoration:none}'
+           '@media (max-width:560px){.nums{font-size:12.5px}.nums th,.nums td{padding:5px 4px}}</style>')
+    body = (f'{style}{css}<div class="wrap">{header}<article class="settings guide">'
+            + (APP / 'guides' / f'{slug}.html').read_text(encoding='utf8') + f'</article>{footer}</div>')
+    return p, wrap_page(body, plain_head(p))
+
+
 def items_page(items):
     """/items: every item page, by profession, so people and crawlers can find them from the home page."""
     e = lambda s: html.escape(s, quote=True)
-    app = (APP / 'index.html').read_text(encoding='utf8')
-    style = app[app.index('<link rel="preconnect"'):app.index('</style>') + 8]   # the fonts and the stylesheet
-    header = app[app.index('<header>'):app.index('</header>') + 9]
-    header = re.sub(r'<div class="status".*?</div>', '', header).replace('<h1>', '<a class="h1 home" href="/">').replace('</h1>', '</a>')
-    footer = app[app.index('<footer>'):app.index('</footer>') + 9].replace('<p id="dataInfo"></p>', '')
+    style, header, footer = shell()
     sections = []
     for prof in ('Blacksmithing', 'Armorsmithing', 'Handicrafting', 'Alchemy', 'Cooking'):
         rows = sorted(((p['profs'][prof], slug, p) for slug, p in items.items() if prof in p['profs']), key=lambda x: (-x[0][1], x[2]['name']))
@@ -222,6 +267,7 @@ def items_page(items):
             '<section class="settings intro allitems"><h1 class="card-title">All craftable items</h1>'
             f'<p>Every item Daeva Forge can price, {len(items)} in all, by profession, highest level first. Each page shows the recipe '
             'and what one costs to craft on your server. Or go back to the <a href="/">calculator</a>.</p>'
+            f'<p>Dragon Lord gear: <a href="{GUIDE_LINK}">guaranteed or old recipe?</a></p>'
             '<div class="seg" role="group" aria-label="Faction"><button type="button" data-v="Elyos">Elyos</button>'
             '<button type="button" data-v="Asmodian">Asmodian</button><button type="button" data-v="">Both</button></div></section>'
             + ''.join(sections) + f'{footer}</div>'
@@ -233,14 +279,7 @@ def items_page(items):
             'document.querySelectorAll(".seg button").forEach(b=>b.addEventListener("click",()=>{show(b.dataset.v);set(b.dataset.v)}))})()</script>')
     p = {'path': '/items', 'title': 'All AION 2 Craftable Items: Recipes and Crafting Costs – Daeva Forge',
          'description': f'Every craftable item in AION 2, {len(items)} in all, by profession: recipes, materials and what each costs to craft on your server.'}
-    t = e(p['title']); d = e(p['description'])
-    head = (f'<title>{t}</title><meta name="description" content="{d}"><link rel="canonical" href="{SITE_URL}/items">'
-            '<link rel="icon" href="/favicon.ico" sizes="32x32"><link rel="icon" href="/favicon.svg" type="image/svg+xml">'
-            '<link rel="apple-touch-icon" href="/apple-touch-icon.png"><meta name="theme-color" content="#08090c">'
-            f'<meta property="og:type" content="website"><meta property="og:site_name" content="Daeva Forge"><meta property="og:title" content="{t}">'
-            f'<meta property="og:description" content="{d}"><meta property="og:url" content="{SITE_URL}/items"><meta property="og:image" content="{SITE_URL}/og.png">'
-            '<meta name="twitter:card" content="summary_large_image">')
-    return p, wrap_page(body, head)
+    return p, wrap_page(body, plain_head(p))
 
 
 def servers():
@@ -287,22 +326,30 @@ def build():
         (DIST / p['file']).write_text(page(p, p['card']), encoding='utf8')
     index, doc = items_page(items)
     (DIST / 'items.html').write_text(doc, encoding='utf8')
+    (DIST / 'guide').mkdir()
+    guides = []
+    for slug in GUIDES:
+        g, doc = guide_page(slug)
+        (DIST / g['file']).write_text(doc, encoding='utf8')
+        guides.append(g)
     for f in ('data.json', 'favicon.svg', 'favicon.ico', 'apple-touch-icon.png', 'og.png', 'BingSiteAuth.xml'):  # last: Bing Webmaster Tools verification
         shutil.copy(APP / f, DIST / f)
     if (SITE / 'speeds').exists():
         shutil.copytree(SITE / 'speeds', DIST / 'speeds')
+    if (APP / 'og').exists():  # the item pages' link-preview images
+        shutil.copytree(APP / 'og', DIST / 'og')
     # /api/feedback is the feedback form's endpoint, not a page (Search Console listed it as a 405)
     (DIST / 'robots.txt').write_text(f'User-agent: *\nDisallow: /api/\nAllow: /\nSitemap: {SITE_URL}/sitemap.xml\n')
     day = datetime.now(timezone.utc).date().isoformat()
     (DIST / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-                                      + ''.join(f'  <url><loc>{SITE_URL}{p["path"]}</loc><lastmod>{day}</lastmod></url>\n' for p in [*PAGES.values(), index])
+                                      + ''.join(f'  <url><loc>{SITE_URL}{p["path"]}</loc><lastmod>{day}</lastmod></url>\n' for p in [*PAGES.values(), index, *guides])
                                       + ''.join(f'  <url><loc>{SITE_URL}{p["path"]}</loc></url>\n' for p in items.values())
                                       + '</urlset>\n')
     (DIST / '_headers').write_text(headers(), encoding='utf8')
     # IndexNow: the key file, and a fingerprint of every page so the next deploy can tell which ones changed
     (DIST / f'{INDEXNOW_KEY}.txt').write_text(INDEXNOW_KEY)
     import hashlib
-    pages = [*PAGES.values(), index, *items.values()]
+    pages = [*PAGES.values(), index, *guides, *items.values()]
     (DIST / 'pages.json').write_text(json.dumps({p['path']: hashlib.sha1((DIST / (p.get('file') or 'items.html')).read_bytes()).hexdigest()[:16]
                                                  for p in pages}, separators=(',', ':')), encoding='utf8')
     print(f'{len(items)} item pages; dist/ ready ({sum(f.stat().st_size for f in DIST.rglob("*") if f.is_file()) // 1024} KB)')
