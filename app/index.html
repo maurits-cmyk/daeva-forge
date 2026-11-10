@@ -149,6 +149,10 @@ tr.grp button{font:600 11.5px/1.3 var(--f-body);letter-spacing:.1em;text-transfo
 tr.grp button:hover{color:#fff}
 tr.grp.pin>td{background:rgba(95,214,232,.08);border-bottom-color:rgba(95,214,232,.35)}
 tr.grp.pin button{color:var(--cyan)}
+tr.grp.star button{color:var(--gold)}
+.star{border:0;background:none;color:var(--dim);font-size:15px;line-height:1;padding:2px 6px 2px 0;margin:-2px 0;cursor:pointer;vertical-align:-1px}
+.star:hover,.star:focus-visible{color:var(--gold)}
+.star.on{color:var(--gold)}
 tr.grp .muted{margin-left:auto;font-weight:400;letter-spacing:0;text-transform:none;font-size:12px}
 #tbl.stacked>tbody>tr.grp,#tbl.stacked>tbody>tr.grp>td{display:block}
 tr.sheet>td{background:rgba(5,6,9,.55);padding:0;border-bottom:1px solid var(--accent)}
@@ -1010,7 +1014,7 @@ function renderRows(room = 99, pre = null, stacked = false){  // room: optional 
   let rows = pre || RECIPES.map(evaluate).filter(e => {
     // leveling: recipes of the chosen profession you can craft now that give EXP
     if(S.mode === 'exp' && (e.r.prof !== S.xpProf || e.s.locked || e.xp.base == null)) return false;
-    if(q && !hits(e, q) && !(pin && pinHit(e))) return false;
+    if(q && !hits(e, q) && !(pin && pinHit(e)) && !FAVS.has(favKey(e.r))) return false;
     const by = S.mode === 'exp' ? null : hiddenBy(e);
     if(by && q) HIDDEN_BY.set(by, (HIDDEN_BY.get(by) || 0) + 1);  // a search says what its hidden matches are hidden by
     return !by;
@@ -1043,7 +1047,7 @@ function renderRows(room = 99, pre = null, stacked = false){  // room: optional 
     const showProf = vis.some(c => c.k === 'prof');
     const tone = v => v == null ? '' : v >= 0 ? 'gain' : 'loss';
     const cell = {
-      name: () => `<td><span class="name g-${esc(g)}">${esc(e.name)}</span>${pageLink(e.r.p)}${e.r.y > 1 ? `<span class="chip">×${e.r.y}</span>` : ''}${chips}<span class="sub">${showProf ? '' : esc(pl(e.r.prof)) + ' ' + (e.s.locked && S.mode === 'single' ? `<span class="loss" title="Your ${esc(pl(e.r.prof))} mastery is ${S.mastery[e.r.prof] || 1}">Lv ${e.r.ml}</span>` : lvText(e.r)) + ' · '}${e.r.combo ? 'Combo ' + e.r.combo.pct + '%: ' + esc(item(e.r.combo.p)[0]) : 'no Combo upgrade'}</span></td>`,
+      name: () => `<td>${starBtn(e)}<span class="name g-${esc(g)}">${esc(e.name)}</span>${pageLink(e.r.p)}${e.r.y > 1 ? `<span class="chip">×${e.r.y}</span>` : ''}${chips}<span class="sub">${showProf ? '' : esc(pl(e.r.prof)) + ' ' + (e.s.locked && S.mode === 'single' ? `<span class="loss" title="Your ${esc(pl(e.r.prof))} mastery is ${S.mastery[e.r.prof] || 1}">Lv ${e.r.ml}</span>` : lvText(e.r)) + ' · '}${e.r.combo ? 'Combo ' + e.r.combo.pct + '%: ' + esc(item(e.r.combo.p)[0]) : 'no Combo upgrade'}</span></td>`,
       prof: () => `<td>${esc(pl(e.r.prof))}<span class="sub">Lv ${e.r.ml} · you ${S.mastery[e.r.prof] || 1}</span></td>`,
       p: () => `<td class="num">${pct(e.s.p)}</td>`,
       cost: () => `<td class="num">${kina(e.cost)}</td>`,
@@ -1066,12 +1070,16 @@ function renderRows(room = 99, pre = null, stacked = false){  // room: optional 
   };
   // transfer crafts come in tiers by item level, then the guaranteed crafts, above the other recipes; each a foldable group
   const pinned = pin ? rows.filter(pinHit).sort((a, b) => is(b.r.p) - is(a.r.p)) : [];  // its own recipes first
-  const rest = pinned.length ? rows.filter(e => !pinned.includes(e)) : rows;
+  const starred = FAVS.size ? rows.filter(e => FAVS.has(favKey(e.r)) && !pinned.includes(e)) : [];
+  const rest = pinned.length || starred.length ? rows.filter(e => !pinned.includes(e) && !starred.includes(e)) : rows;
   const tiers = rest.some(e => e.r.tr || e.r.g) ? ['5', '4', '3', '2', '1', 'g', 'rest'] : null;
   const groupOf = e => e.r.tr ? String(e.r.tr) : e.r.g ? 'g' : 'rest';
   const pinHtml = !pinned.length ? '' : `<tr class="grp pin"><td colspan="${cols}"><button type="button" data-grp="pin" aria-expanded="${!PIN_FOLDED}"><span class="fold">${PIN_FOLDED ? '▸' : '▾'}</span>${esc(S.pin)} and related<span class="muted">${pinned.length} recipe${pinned.length === 1 ? '' : 's'}</span></button></td></tr>`
     + (PIN_FOLDED ? '' : pinned.map(rowHtml).join(''));
-  body.innerHTML = pinHtml + (!tiers ? rest.map(rowHtml).join('') : tiers.map(t => {
+  const starFolded = starred.length && tierFolded('star', q);
+  const starHtml = !starred.length ? '' : `<tr class="grp star"><td colspan="${cols}"><button type="button" data-grp="star" aria-expanded="${!starFolded}"><span class="fold">${starFolded ? '▸' : '▾'}</span>★ Starred<span class="muted">${starred.length} recipe${starred.length === 1 ? '' : 's'}</span></button></td></tr>`
+    + (starFolded ? '' : starred.map(rowHtml).join(''));
+  body.innerHTML = pinHtml + starHtml + (!tiers ? rest.map(rowHtml).join('') : tiers.map(t => {
     const rs = rest.filter(e => groupOf(e) === t);
     if(!rs.length) return '';
     const folded = tierFolded(t, q);
@@ -1091,8 +1099,15 @@ function renderRows(room = 99, pre = null, stacked = false){  // room: optional 
 // while searching last until the search changes).
 const LIST_FOLD = store.get('listFold', {}), SEARCH_FOLD = {q: '', tiers: new Set()};
 let PIN_FOLDED = false;  // an item page's pinned group, open until folded (not remembered)
+// Favourites: a star on a recipe keeps it in a "Starred" group on top (per item, plus its guaranteed recipe apart)
+const FAVS = new Set(store.get('favs', []));
+const favKey = r => slugOf(item(r.p)[0]) + (r.g ? '+g' : '');
+function starBtn(e){
+  const on = FAVS.has(favKey(e.r)), nm = esc(e.name);
+  return `<button type="button" class="star${on ? ' on' : ''}" data-star="${esc(favKey(e.r))}" aria-pressed="${on}" aria-label="${on ? 'Unstar' : 'Star'} ${nm}" title="${on ? 'Starred: kept on top. Click to unstar' : 'Star it to keep it on top'}">${on ? '★' : '☆'}</button>`;
+}
 function tierFolded(t, q){
-  if(!q) return LIST_FOLD[t] ?? (t !== '5' && t !== 'rest');
+  if(!q) return LIST_FOLD[t] ?? (t !== '5' && t !== 'rest' && t !== 'star');
   if(SEARCH_FOLD.q !== q){ SEARCH_FOLD.q = q; SEARCH_FOLD.tiers = new Set() }
   return SEARCH_FOLD.tiers.has(t);
 }
@@ -1502,11 +1517,13 @@ function buildSettings(){
     if(clr){ delete S.manual[clr.dataset.clear]; store.set('manual', S.manual); manualCount(); render(); return }
     const src = ev.target.closest('[data-src]');
     if(src){ const k = src.dataset.src; if(src.dataset.v) S.src[k] = src.dataset.v; else delete S.src[k]; store.set('src', S.src); render(); return }
+    const st = ev.target.closest('[data-star]');
+    if(st){ const k = st.dataset.star; if(FAVS.has(k)) FAVS.delete(k); else FAVS.add(k); store.set('favs', [...FAVS]); render(); return }
     if(ev.target.closest('.sheet, a')) return;
     const tr = ev.target.closest('tr.rec'); if(!tr) return;
     S.open = S.open === +tr.dataset.id ? null : +tr.dataset.id; render();
   });
-  rowsEl.addEventListener('keydown', ev => { const tr = !ev.target.closest('a') && ev.target.closest('tr.rec'); if(tr && (ev.key === 'Enter' || ev.key === ' ')){ ev.preventDefault(); S.open = S.open === +tr.dataset.id ? null : +tr.dataset.id; render(); document.querySelector(`tr.rec[data-id="${tr.dataset.id}"]`)?.focus() } });
+  rowsEl.addEventListener('keydown', ev => { const tr = !ev.target.closest('a, button') && ev.target.closest('tr.rec'); if(tr && (ev.key === 'Enter' || ev.key === ' ')){ ev.preventDefault(); S.open = S.open === +tr.dataset.id ? null : +tr.dataset.id; render(); document.querySelector(`tr.rec[data-id="${tr.dataset.id}"]`)?.focus() } });
   rowsEl.addEventListener('change', ev => { const rid = ev.target.dataset.xp; if(rid){ const v = +ev.target.value; if(v > 0) S.xpOwn[rid] = v; else delete S.xpOwn[rid]; store.set('xpOwn', S.xpOwn); xpOwnCount(); render(); return } });
   rowsEl.addEventListener('change', ev => { const k = ev.target.dataset.owned; if(k){ const v = Math.max(0, Math.round(+ev.target.value) || 0); if(v) S.owned[k] = v; else delete S.owned[k]; store.set('owned', S.owned); render() } });
   rowsEl.addEventListener('change', ev => { const k = ev.target.dataset.manual; if(k){ const v = +ev.target.value; if(v > 0) S.manual[k] = v; else delete S.manual[k]; store.set('manual', S.manual); manualCount(); render() } });
