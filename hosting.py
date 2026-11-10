@@ -114,6 +114,7 @@ _ICON_PATHS = {
     'box': 'M4 8l8-4 8 4v8l-8 4-8-4zM4 8l8 4 8-4M12 12v8',
     'pencil': 'M4 20l1-4.5L15.5 5 19 8.5 8.5 19zM13.5 7l3.5 3.5',
     'down': 'M12 4v15M6 13l6 6 6-6',
+    'book': 'M4 5.5C6.5 4 9.5 4 12 6c2.5-2 5.5-2 8-.5V19c-2.5-1.5-5.5-1.5-8 .5-2.5-2-5.5-2-8-.5zM12 6v13.5',
 }
 ICONS = ('<svg width="0" height="0" style="position:absolute" aria-hidden="true">'
          + ''.join(f'<symbol id="i-{k}" viewBox="0 0 24 24"><path d="{d}"/></symbol>' for k, d in _ICON_PATHS.items()) + '</svg>')
@@ -132,7 +133,10 @@ def item_pages(data):
     by = {}
     for r in recs:
         by.setdefault(slug_of(name(r['p'])), []).append(r)
-    link = lambda k: f'<a href="/item/{slug_of(name(k))}">{e(name(k))}</a>' if slug_of(name(k)) in by else e(name(k))
+    grade_of = lambda k: data['items'].get(str(k), ['', ''])[1] or 'Common'
+    # item names in their rarity colour, as in the calculator; the ones with a page are links
+    link = lambda k: (f'<a class="ilink g-{e(grade_of(k))}" href="/item/{slug_of(name(k))}">{e(name(k))}</a>' if slug_of(name(k)) in by
+                      else f'<span class="g-{e(grade_of(k))}">{e(name(k))}</span>')
     uses, combos = {}, {}   # material -> products made from it; Combo product -> what Combos into it
     for r in recs:
         if r.get('g'):
@@ -166,7 +170,7 @@ def item_pages(data):
         facts = []
         if any(r.get('g') for r in rs):
             facts.append(f'<li>{icon("shield")}<span><a href="/item/{slug}?guaranteed=1">Guaranteed recipe</a>: '
-                         f'same materials, 100%, no Combo, Bound · <a href="{GUIDE_LINK}">which to use?</a></span></li>')
+                         f'same materials, 100%, no Combo, Bound <a class="guidechip" href="{GUIDE_LINK}">{icon("book")}Which to use?</a></span></li>')
         if slug in combos:
             facts.append(f'<li>{icon("spark")}<span><b>Combo from</b> ' + ', '.join(link(k) for k in sorted(combos[slug], key=name)) + '</span></li>')
         used = sorted({slug_of(name(k)): k for k in uses.get(slug, ())}.values(), key=name)
@@ -175,8 +179,8 @@ def item_pages(data):
             facts.append(f'<li>{icon("arrow")}<span><b>Used in</b> ' + ', '.join(link(k) for k in used[:MAX_USES]) + more + '</span></li>')
         only = f'<span class="tag">{FACTION[next(iter(races))]} only</span>' if len(races) == 1 else ''
         card = (f'<section class="settings itempage" id="itemCard" aria-label="{e(nm)}">\n'
-                f'    {ICONS}\n'
                 f'    <h1 class="card-title"><span><span class="g-{e(grade)}">{e(nm)}</span>: crafting cost</span></h1>\n'
+                f'    {ICONS}\n'   # after the title: a card's first-child title sits flush at the top
                 f'    <p class="lede">AION 2 cost to craft one at market prices, failed attempts included.{only}</p>\n'
                 '    <div class="itemcost" id="itemCost" hidden></div>\n'
                 f'    <h2 class="rcp-title">Recipe{"s" if len(blocks) > 1 else ""} <span class="muted">materials per attempt</span></h2>\n'
@@ -259,7 +263,7 @@ def items_page(items):
         sections.append(f'<section class="settings allitems" aria-label="{prof}"><h2 class="card-title">{prof} <span class="n">{len(rows)}</span></h2>'
                         f'<ul>{lis}</ul></section>')
     css = ('<style>.home{color:inherit;text-decoration:none}.allitems{display:block}.allitems ul{columns:3 240px;column-gap:28px;margin:12px 0;padding:0;list-style:none}'
-           '.allitems li{break-inside:avoid;padding:3px 0;font-size:14px}.allitems a{text-decoration:none}.allitems a:hover{text-decoration:underline}'
+           '.allitems li{break-inside:avoid;padding:3px 0;font-size:14px}.allitems li a{text-decoration:none}.allitems li a:hover{text-decoration:underline}'
            '.allitems .lv{display:block;font-size:11.5px;color:var(--muted)}'
            '[data-show=Elyos] li[data-f=Asmodian],[data-show=Asmodian] li[data-f=Elyos]{display:none}.intro .seg{margin:4px 0 12px}.card-title .n{margin-left:auto;color:var(--muted);font-weight:500}'
            '.intro p{margin:10px 0;max-width:80ch;line-height:1.5}.intro a{color:var(--accent)}</style>')

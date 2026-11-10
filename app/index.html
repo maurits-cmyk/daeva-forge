@@ -234,7 +234,16 @@ span.ownx{display:inline-block;cursor:default}
 .itempage{display:block}
 .itempage h1.card-title{font-size:13px}
 .itempage p,.itempage ul{margin:10px 0;line-height:1.5}
-.itempage a{color:var(--accent)}
+.settings>:last-child{margin-bottom:0}  /* content ends 14px above the bottom, as in the foldable cards */
+/* links: the accent colour with a soft underline that brightens on hover; item names keep their rarity colour */
+.itempage a,footer a,.howto a,.guide a,.intro a{color:var(--accent);text-decoration:underline;text-decoration-color:rgba(159,212,255,.3);text-underline-offset:3px;transition:color .18s ease,text-decoration-color .18s ease}
+.itempage a:hover,footer a:hover,.howto a:hover,.guide a:hover,.intro a:hover{color:#fff;text-decoration-color:currentColor}
+.itempage a.ilink,.guide a.ilink{color:inherit;text-decoration-color:color-mix(in srgb,currentColor 35%,transparent)}
+.itempage a.ilink:hover,.guide a.ilink:hover{filter:brightness(1.2);text-decoration-color:currentColor}
+a.guidechip{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;text-decoration:none;font-size:12.5px;font-weight:500;color:var(--cyan);border:1px solid rgba(95,214,232,.4);background:rgba(95,214,232,.08);border-radius:3px;padding:1px 9px;margin-left:6px;transition:color .18s ease,background .18s ease,border-color .18s ease}
+a.guidechip:hover{color:#fff;background:rgba(95,214,232,.18);border-color:var(--cyan)}
+a.guidechip .ico{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+footer a.guidechip{margin-left:0}
 .itempage .lede{color:var(--muted);display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
 .ico{width:15px;height:15px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-2px}
 .tag{font:600 10.5px/1.7 var(--f-body);letter-spacing:.08em;text-transform:uppercase;padding:0 7px;border-radius:2px;border:1px solid var(--line-2);color:var(--ink);white-space:nowrap}
@@ -314,6 +323,15 @@ footer a{color:var(--accent)}
   .owninline input.owned{width:40px}
   .opt{padding:2px 4px}
 }
+/* opening and closing in the list (see slideIn/slideOut) */
+@keyframes reveal{from{opacity:0;transform:translateY(-6px)}}
+@keyframes conceal{to{opacity:0;transform:translateY(-6px)}}
+tr.reveal{animation:reveal .22s ease-out}
+tr.conceal{animation:conceal .16s ease-in forwards}
+tr.sheet.reveal,tr.sheet.conceal{animation:none}
+tr.sheet.reveal>td>*{animation:reveal .25s ease-out}
+tr.sheet.conceal>td>*{animation:conceal .16s ease-in forwards}
+#colPop:not([hidden]){animation:reveal .16s ease-out}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -504,7 +522,7 @@ footer a{color:var(--accent)}
 
   <footer>
     <p>Data: recipes and vendor prices from <a href="https://aion2hub.com/tools/crafting-calculator" target="_blank" rel="noopener">AION2 Hub</a>, success chances from <a href="https://probability.plaync.com/aion2/index" target="_blank" rel="noopener">NC's probability disclosure</a> and <a href="https://gamewith.ai/aion2/en" target="_blank" rel="noopener">GameWith</a>, supply requests from <a href="https://wikily.gg/aion-2" target="_blank" rel="noopener">wikily</a>, prices from <a href="https://aion2.exchange/" target="_blank" rel="noopener">Aion2Market</a>.</p>
-    <p id="guideLine" hidden>Guide: <a href="/guide/guaranteed-dragon-lord-recipe">guaranteed or old Dragon Lord recipe?</a></p>
+    <p id="guideLine" hidden><a class="guidechip" href="/guide/guaranteed-dragon-lord-recipe"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5C6.5 4 9.5 4 12 6c2.5-2 5.5-2 8-.5V19c-2.5-1.5-5.5-1.5-8 .5-2.5-2-5.5-2-8-.5zM12 6v13.5"/></svg>Guide: guaranteed or old Dragon Lord recipe?</a></p>
     <p id="dataInfo"></p>
     <p class="legal">Unofficial fan site. Not affiliated with, endorsed or sponsored by NCSOFT. AION, AION 2 and NCSOFT are trademarks of NCSOFT Corporation; all other trademarks are the property of their respective owners.</p>
   </footer>
@@ -578,6 +596,10 @@ function pageLink(k){
   const nm = item(k)[0], slug = slugOf(nm);
   return PAGE_SLUGS.has(slug) && slug !== PAGE_ITEM ? `<a class="pagelink" href="/item/${slug}" title="${esc(nm)}: its own page" aria-label="${esc(nm)} page">↗</a>` : '';
 }
+// Dragon Lord items with a guaranteed recipe: the guide comparing it with the old one (hosted site only)
+const GUIDE = '/guide/guaranteed-dragon-lord-recipe';
+const BOOK = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5C6.5 4 9.5 4 12 6c2.5-2 5.5-2 8-.5V19c-2.5-1.5-5.5-1.5-8 .5-2.5-2-5.5-2-8-.5zM12 6v13.5"/></svg>';
+const guideLink = r => S.hosted && (r.g || S.data.recipes.some(x => x.g && x.p === r.p)) ? ` <a class="guidechip" href="${GUIDE}">${BOOK}Guaranteed or old recipe?</a>` : '';
 const copyLink = () => LINKS() ? '<button type="button" class="chip copylink" data-copylink>copy link</button>' : '';
 
 /* ---------- formatting ---------- */
@@ -1100,6 +1122,35 @@ function renderRows(room = 99, pre = null, stacked = false){  // room: optional 
 // while searching last until the search changes).
 const LIST_FOLD = store.get('listFold', {}), SEARCH_FOLD = {q: '', tiers: new Set()};
 let PIN_FOLDED = false;  // an item page's pinned group, open until folded (not remembered)
+// Opening and closing in the list (a recipe, a group, a branch of the materials tree) slides like the cards do:
+// what opens slides in; what closes slides out first, then goes
+const CALM = matchMedia('(prefers-reduced-motion: reduce)');
+let SLIDING = false;
+function rowsAfter(tr, stop){ const out = []; for(let n = tr && tr.nextElementSibling; n && !stop(n); n = n.nextElementSibling) out.push(n); return out }
+// a tree row's branch: the rows below it that sit deeper (its own note row comes first and stays)
+function branchOf(tr){
+  const d = +tr.dataset.depth, out = [];
+  let n = tr.nextElementSibling;
+  if(n && n.classList.contains('tnote')) n = n.nextElementSibling;
+  for(; n && n.dataset.depth != null && +n.dataset.depth > d; n = n.nextElementSibling) out.push(n);
+  return out;
+}
+function slideIn(els){
+  if(CALM.matches) return;
+  els.forEach(el => el.classList.add('reveal'));
+  setTimeout(() => els.forEach(el => el.classList.remove('reveal')), 300);
+}
+function slideOut(els, then){
+  if(CALM.matches || !els.length) return then();
+  if(SLIDING) return; SLIDING = true;
+  els.forEach(el => el.classList.add('conceal'));
+  setTimeout(() => { SLIDING = false; then() }, 160);
+}
+function toggleRecipe(id, after = () => {}){
+  const sheet = () => [document.querySelector(`tr.rec[data-id="${id}"] + tr.sheet`)].filter(Boolean);
+  if(S.open === id) return slideOut(sheet(), () => { S.open = null; render(); after() });
+  S.open = id; render(); slideIn(sheet()); after();
+}
 // Favourites: a star on a recipe keeps it in a "Starred" group on top (per item, plus its guaranteed recipe apart)
 const FAVS = new Set(store.get('favs', []));
 const favKey = r => slugOf(item(r.p)[0]) + (r.g ? '+g' : '');
@@ -1180,10 +1231,10 @@ function treeRows(k, qty, depth, path, stack, ctx){
     if(ctx && cost != null) cost -= ctx.saved - saved0;   // owned materials in this branch
   }
   if(ctx && depth === 0 && cost != null) ctx.sum += cost;
-  const row = (folded, guides, noteGuides) => `<tr class="tree d${Math.min(depth, 6)}${open ? ' foldable' : ''}"${fold(folded)}><td><span class="tname" style="--d:${depth}">${guides}${caret(folded)}<span><span class="qinline">${fmtQty(need)} × </span><span class="g-${esc(nm[1] || 'Common')}">${esc(nm[0])}</span>${pageLink(k)}${ownInline}</span></span></td><td class="num q">${qtyCell}</td>
+  const row = (folded, guides, noteGuides) => `<tr class="tree d${Math.min(depth, 6)}${open ? ' foldable' : ''}" data-depth="${depth}"${fold(folded)}><td><span class="tname" style="--d:${depth}">${guides}${caret(folded)}<span><span class="qinline">${fmtQty(need)} × </span><span class="g-${esc(nm[1] || 'Common')}">${esc(nm[0])}</span>${pageLink(k)}${ownInline}</span></span></td><td class="num q">${qtyCell}</td>
     <td><div class="opts" role="group" aria-label="Buy, craft or morph ${esc(nm[0])}">${buyOpt}${craftOpt}${morphOpt}${chosen !== 'cheapest' && chosen !== S.sourcing ? '<button type="button" class="chip" data-src="' + k + '" data-v="">reset</button>' : ''}</div></td>
     ${ownCell}<td class="num${depth ? ' muted' : ''}">${cost == null ? '–' : kina(cost)}</td></tr>`
-    + (open ? `<tr class="tnote foldable"${fold(folded)}><td colspan="${ctx ? 5 : 4}"><span class="tindent" style="--d:${depth}">${noteGuides}${note}${folded ? ` · ${kids.length} material${kids.length === 1 ? '' : 's'} hidden` : ''}</span></td></tr>` : '');
+    + (open ? `<tr class="tnote foldable" data-depth="${depth}"${fold(folded)}><td colspan="${ctx ? 5 : 4}"><span class="tindent" style="--d:${depth}">${noteGuides}${note}${folded ? ` · ${kids.length} material${kids.length === 1 ? '' : 's'} hidden` : ''}</span></td></tr>` : '');
   return {k: String(k), row, kids, cost, depth, size: 1 + (kids ? kids.reduce((t, n) => t + n.size, 0) : 0)};
 }
 function treeHtml(nodes){
@@ -1241,7 +1292,7 @@ function singleSheet(e){
   const fee = (r.fee || 0) * A, skip = skipOf(r, new Set([String(r.p)]));
   return `<div class="sheetin single"><div>
     <h3>Materials for one ${esc(e.name)}${r.y > 1 ? ' (one craft makes ' + r.y + ')' : ''}</h3>
-    <p class="notes" style="margin:0 0 10px">${s.locked ? `<span class="loss">Needs ${esc(pl(r.prof))} Lv ${r.ml}; you're at ${S.mastery[r.prof] || 1}.</span> ` : ''}${r.tr ? transferNote(r, skip) : r.g ? 'Guaranteed craft: always succeeds, never Combos and makes Bound gear.' : s.p ? `${pct(s.p)} success, so about ${fmtQty(A)} attempt${A === 1 ? '' : 's'}.` : 'Success chance unknown: quantities are for one attempt.'}</p>
+    <p class="notes" style="margin:0 0 10px">${s.locked ? `<span class="loss">Needs ${esc(pl(r.prof))} Lv ${r.ml}; you're at ${S.mastery[r.prof] || 1}.</span> ` : ''}${r.tr ? transferNote(r, skip) : r.g ? 'Guaranteed craft: always succeeds, never Combos and makes Bound gear.' : s.p ? `${pct(s.p)} success, so about ${fmtQty(A)} attempt${A === 1 ? '' : 's'}.` : 'Success chance unknown: quantities are for one attempt.'}${guideLink(r)}</p>
     ${foldBar(nodes, clearOwned + copyLink())}<div class="mtable"><table><thead><tr><th>Material</th><th class="num q">Qty</th><th>Buy or craft (each)</th><th class="num own">Owned</th><th class="num">Cost</th></tr></thead>
     <tbody>${lines}<tr><td colspan="4"><b>Expected cost</b>${fee ? ' (incl. fees ' + kina(fee) + ')' : ''}${clearOwned ? ' ' + clearOwned : ''}</td><td class="num"><b>${kina(ctx.sum + fee)}</b></td></tr></tbody></table></div>
     ${e.missing.length ? `<div class="notes" style="margin-top:10px"><p class="loss">No price for ${e.missing.map(k => esc(item(k)[0])).join(', ')}. Enter one to complete the cost.</p></div>` : ''}
@@ -1496,11 +1547,17 @@ function buildSettings(){
     }
     const grp = ev.target.closest('[data-grp]');
     if(grp){
-      if(grp.dataset.grp === 'pin'){ PIN_FOLDED = !PIN_FOLDED; render(); return }
-      const t = grp.dataset.grp, q = S.q.trim().toLowerCase(), folded = tierFolded(t, q);
-      if(q){ if(folded) SEARCH_FOLD.tiers.delete(t); else SEARCH_FOLD.tiers.add(t) }
-      else { LIST_FOLD[t] = !folded; store.set('listFold', LIST_FOLD) }
-      render(); return
+      const t = grp.dataset.grp, q = S.q.trim().toLowerCase(), folded = t === 'pin' ? PIN_FOLDED : tierFolded(t, q);
+      const toggle = () => {
+        if(t === 'pin') PIN_FOLDED = !PIN_FOLDED;
+        else if(q){ if(folded) SEARCH_FOLD.tiers.delete(t); else SEARCH_FOLD.tiers.add(t) }
+        else { LIST_FOLD[t] = !folded; store.set('listFold', LIST_FOLD) }
+        render();
+      };
+      const inGroup = tr => rowsAfter(tr, n => n.classList.contains('grp'));
+      if(folded){ toggle(); slideIn(inGroup(document.querySelector(`[data-grp="${t}"]`).closest('tr'))) }
+      else slideOut(inGroup(grp.closest('tr')), toggle);
+      return
     }
     const all = ev.target.closest('[data-foldall]');
     if(all){
@@ -1509,7 +1566,13 @@ function buildSettings(){
     }
     // a tree row folds wherever it's clicked, except on its buttons and inputs
     const fold = !ev.target.closest('input, label, a, button:not(.fold)') && ev.target.closest('[data-fold]');
-    if(fold){ TREE_FOLD[fold.dataset.fold] = fold.dataset.folded !== '1'; store.set('treeFold', TREE_FOLD); render(); return }
+    if(fold){
+      const k = fold.dataset.fold, opening = fold.dataset.folded === '1';
+      const toggle = () => { TREE_FOLD[k] = !opening; store.set('treeFold', TREE_FOLD); render() };
+      const branches = () => [...document.querySelectorAll(`tr.tree[data-fold="${CSS.escape(k)}"]`)].flatMap(branchOf);
+      if(opening){ toggle(); slideIn(branches()) } else slideOut(branches(), toggle);
+      return
+    }
     const cx = ev.target.closest('[data-clearxp]');
     if(cx){ delete S.xpOwn[cx.dataset.clearxp]; store.set('xpOwn', S.xpOwn); xpOwnCount(); render(); return }
     const co = ev.target.closest('[data-clearown], [data-clearowned]');  // one Owned field, or all of a recipe's
@@ -1522,9 +1585,9 @@ function buildSettings(){
     if(st){ const k = st.dataset.star; if(FAVS.has(k)) FAVS.delete(k); else FAVS.add(k); store.set('favs', [...FAVS]); render(); return }
     if(ev.target.closest('.sheet, a')) return;
     const tr = ev.target.closest('tr.rec'); if(!tr) return;
-    S.open = S.open === +tr.dataset.id ? null : +tr.dataset.id; render();
+    toggleRecipe(+tr.dataset.id);
   });
-  rowsEl.addEventListener('keydown', ev => { const tr = !ev.target.closest('a, button') && ev.target.closest('tr.rec'); if(tr && (ev.key === 'Enter' || ev.key === ' ')){ ev.preventDefault(); S.open = S.open === +tr.dataset.id ? null : +tr.dataset.id; render(); document.querySelector(`tr.rec[data-id="${tr.dataset.id}"]`)?.focus() } });
+  rowsEl.addEventListener('keydown', ev => { const tr = !ev.target.closest('a, button') && ev.target.closest('tr.rec'); if(tr && (ev.key === 'Enter' || ev.key === ' ')){ ev.preventDefault(); toggleRecipe(+tr.dataset.id, () => document.querySelector(`tr.rec[data-id="${tr.dataset.id}"]`)?.focus()) } });
   rowsEl.addEventListener('change', ev => { const rid = ev.target.dataset.xp; if(rid){ const v = +ev.target.value; if(v > 0) S.xpOwn[rid] = v; else delete S.xpOwn[rid]; store.set('xpOwn', S.xpOwn); xpOwnCount(); render(); return } });
   rowsEl.addEventListener('change', ev => { const k = ev.target.dataset.owned; if(k){ const v = Math.max(0, Math.round(+ev.target.value) || 0); if(v) S.owned[k] = v; else delete S.owned[k]; store.set('owned', S.owned); render() } });
   rowsEl.addEventListener('change', ev => { const k = ev.target.dataset.manual; if(k){ const v = +ev.target.value; if(v > 0) S.manual[k] = v; else delete S.manual[k]; store.set('manual', S.manual); manualCount(); render() } });
