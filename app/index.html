@@ -995,6 +995,9 @@ function renderRows(room = 99, pre = null, stacked = false){  // room: optional 
   // a search matches recipes for an item and those it's a material of; an item page pins its matches above the list
   const hits = (e, s) => e.name.toLowerCase().includes(s) || e.r.c.some(([k]) => item(k)[0].toLowerCase().includes(s));
   const pin = S.mode === 'single' && S.pin ? S.pin.toLowerCase() : '';
+  // pinned: every recipe that makes the item (plain, guaranteed, transfer, or as its Combo) or uses it as a material
+  const is = k => k != null && item(k)[0].toLowerCase() === pin;
+  const pinHit = e => is(e.r.p) || is(e.r.combo && e.r.combo.p) || is(e.r.alias) || e.r.c.some(([k]) => is(k));
   // the filter (named as in the settings) that hides a recipe, or null
   const hiddenBy = e => {
     if(S.mode === 'profit' && S.canCraft && e.s.locked) return 'Only recipes I can craft now';
@@ -1007,7 +1010,7 @@ function renderRows(room = 99, pre = null, stacked = false){  // room: optional 
   let rows = pre || RECIPES.map(evaluate).filter(e => {
     // leveling: recipes of the chosen profession you can craft now that give EXP
     if(S.mode === 'exp' && (e.r.prof !== S.xpProf || e.s.locked || e.xp.base == null)) return false;
-    if(q && !hits(e, q) && !(pin && hits(e, pin))) return false;
+    if(q && !hits(e, q) && !(pin && pinHit(e))) return false;
     const by = S.mode === 'exp' ? null : hiddenBy(e);
     if(by && q) HIDDEN_BY.set(by, (HIDDEN_BY.get(by) || 0) + 1);  // a search says what its hidden matches are hidden by
     return !by;
@@ -1062,7 +1065,7 @@ function renderRows(room = 99, pre = null, stacked = false){  // room: optional 
       + (open ? `<tr class="sheet"><td colspan="${cols}">${S.mode === 'single' ? singleSheet(e) : sheet(e)}</td></tr>` : '');
   };
   // transfer crafts come in tiers by item level, then the guaranteed crafts, above the other recipes; each a foldable group
-  const pinned = pin ? rows.filter(e => hits(e, pin)).sort((a, b) => (b.name.toLowerCase() === pin) - (a.name.toLowerCase() === pin)) : [];
+  const pinned = pin ? rows.filter(pinHit).sort((a, b) => is(b.r.p) - is(a.r.p)) : [];  // its own recipes first
   const rest = pinned.length ? rows.filter(e => !pinned.includes(e)) : rows;
   const tiers = rest.some(e => e.r.tr || e.r.g) ? ['5', '4', '3', '2', '1', 'g', 'rest'] : null;
   const groupOf = e => e.r.tr ? String(e.r.tr) : e.r.g ? 'g' : 'rest';
