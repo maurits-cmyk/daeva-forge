@@ -225,10 +225,34 @@ span.ownx{display:inline-block;cursor:default}
 /* item pages (/item/<name>, built by hosting.py): what the item takes, above the calculator */
 .itempage{display:block}
 .itempage h1.card-title{font-size:13px}
-.itempage p,.itempage ul{margin:10px 0;max-width:90ch;line-height:1.5}
-.itempage ul{padding-left:18px}
-.itempage li+li{margin-top:4px}
+.itempage p,.itempage ul{margin:10px 0;line-height:1.5}
 .itempage a{color:var(--accent)}
+.itempage .lede{color:var(--muted);display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.ico{width:15px;height:15px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-2px}
+.tag{font:600 10.5px/1.7 var(--f-body);letter-spacing:.08em;text-transform:uppercase;padding:0 7px;border-radius:2px;border:1px solid var(--line-2);color:var(--ink);white-space:nowrap}
+.itemcost{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin:14px 0;padding:12px 14px;background:var(--panel-2);border:1px solid var(--line);border-radius:4px}
+.itemcost .srv{display:inline-flex;align-items:center;gap:2px;color:var(--ink)}
+.itemcost .cost{font-size:15px}
+.itemcost .cost b{font-size:21px;color:#fff;font-weight:600}
+.itemcost .alt{color:var(--muted)}
+.itemcost .alt b{color:var(--ink)}
+.iconbtn{border:0;background:transparent;color:var(--muted);padding:5px;margin:-5px 0;cursor:pointer;border-radius:3px;display:inline-flex}
+.iconbtn:hover,.iconbtn:focus-visible{color:var(--accent);background:var(--soft)}
+.btn.go{margin-left:auto;display:inline-flex;align-items:center;gap:7px;font-weight:600;font-size:13.5px;padding:8px 16px;color:#fff;border-color:var(--cyan);background:rgba(95,214,232,.14);box-shadow:0 0 14px rgba(95,214,232,.22)}
+.btn.go:hover{background:rgba(95,214,232,.24);border-color:var(--cyan)}
+.rcp-title{font:600 11px/1 var(--f-body);letter-spacing:.12em;text-transform:uppercase;color:var(--ink);margin:16px 0 6px}
+.rcp-title .muted{letter-spacing:normal;text-transform:none;font-weight:400;margin-left:6px}
+.rcp+.rcp{margin-top:12px}
+.itempage .rcp-h{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin:8px 0 4px}
+.rcp-h>span .ico{margin-right:5px}
+.rcp-h .ok{color:var(--gain)}
+.itempage .mats{list-style:none;padding:0;margin:0 0 0 2px}
+.itempage .mats.long{columns:2 260px;column-gap:24px;max-width:640px}
+.mats li{padding:1px 0;break-inside:avoid}
+.mats .q{display:inline-block;min-width:2.4em;text-align:right;color:var(--gold);font-variant-numeric:tabular-nums}
+.itempage .facts{list-style:none;padding:12px 0 0;margin:14px 0 0;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
+.facts li{display:flex;gap:8px;align-items:flex-start}
+.facts .ico{margin-top:3px;color:var(--cyan)}
 .pagelink{color:var(--muted);text-decoration:none;font-size:12px;margin-left:5px;padding:0 2px}
 .pagelink:hover,.pagelink:focus-visible{color:var(--accent)}
 /* until a mastery level is first set: glowing level boxes (pulsing a few times), a line saying why, a chip on the card's title */
@@ -237,8 +261,6 @@ span.ownx{display:inline-block;cursor:default}
 @keyframes nudge{50%{border-color:var(--cyan);box-shadow:0 0 14px 2px rgba(95,214,232,.5)}}
 .nudgetext{color:var(--cyan);font-weight:600}
 .chip.nudgechip{color:var(--cyan);border-color:rgba(95,214,232,.5);letter-spacing:normal;text-transform:none;margin-left:10px}
-.itempage .itemcost{font-size:15px}
-.itempage .itemcost b{color:#fff}
 footer{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:12px}
 footer p{margin:0}
 footer a{color:var(--accent)}
@@ -516,7 +538,8 @@ const PAGE_ITEM = (location.pathname.match(/^\/item\/([a-z0-9-]+?)(?:\.html)?\/?
 const LINK = (() => { try{ const p = new URLSearchParams(location.search); return {item: p.get('item') || PAGE_ITEM, g: p.get('guaranteed') === '1', server: +p.get('server') || null} }catch(e){ return {item: PAGE_ITEM} } })();
 const slugOf = n => n.toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const LINKS = () => S.hosted || LIVE;  // the claude.ai copy has no address of its own
-const AT = PAGE_ITEM ? '/' : '';  // item pages sit a folder down; the site's files are at its root
+// where the site's files are, fixed at load: item pages sit a folder down, and the address changes as recipes open
+const AT = (() => { try{ return new URL(PAGE_ITEM ? '/' : '.', location.href).href }catch(e){ return '' } })();
 function openLinked(){
   const want = LINK.item; LINK.item = null;
   const r = RECIPES.filter(r => slugOf(item(r.p)[0]) === want).sort((a, b) => (!!b.g === LINK.g) - (!!a.g === LINK.g))[0];
@@ -949,9 +972,13 @@ function itemCost(){
   const old = best(es.filter(e => !e.r.g)), g = best(es.filter(e => e.r.g));
   el.hidden = !es.length;
   if(!es.length) return;
-  const at = ([e]) => e.s.locked ? ` at ${esc(pl(e.r.prof))} Lv ${e.r.ml}` : '';
-  el.innerHTML = (old || g ? `On ${esc(S.server.name)}: about <b>${kina((old || g)[1])}</b> Kina to make one${at(old || g)}${old && g ? `, or <b>${kina(g[1])}</b> with the guaranteed recipe` : ''}.`
-    : `Some prices are missing on ${esc(S.server.name)}.`) + ' <button type="button" class="chip" data-jump>see the breakdown</button>';
+  const ico = k => `<svg class="ico" aria-hidden="true"><use href="#i-${k}"/></svg>`, main = old || g;
+  el.innerHTML = `<span class="srv">${esc(S.server.name)}<button type="button" class="iconbtn" data-editserver title="Change server" aria-label="Change server">${ico('pencil')}</button></span>`
+    + (main ? `<span class="cost">≈ <b>${kina(main[1])}</b> Kina each</span>`
+      + (main[0].s.locked ? `<span class="alt">at ${esc(pl(main[0].r.prof))} Lv ${main[0].r.ml}</span>` : '')
+      + (old && g ? `<span class="alt">${ico('shield')} guaranteed <b>${kina(g[1])}</b></span>` : '')
+      : '<span class="alt">Some prices missing</span>')
+    + `<button type="button" class="btn go" data-jump>Full breakdown${ico('down')}</button>`;
 }
 function renderRows(room = 99, pre = null, stacked = false){  // room: optional columns to try; pre: rows already evaluated and sorted; stacked: card layout
   if(!pre) memo = new Map(), HIDDEN_BY = new Map();
@@ -1464,7 +1491,14 @@ function buildSettings(){
   rowsEl.addEventListener('change', ev => { const k = ev.target.dataset.manual; if(k){ const v = +ev.target.value; if(v > 0) S.manual[k] = v; else delete S.manual[k]; store.set('manual', S.manual); manualCount(); render() } });
   $('#clearManual').addEventListener('click', () => { S.manual = {}; store.set('manual', S.manual); manualCount(); render() });
   manualCount();
-  document.addEventListener('click', ev => { if(ev.target.closest('[data-jump]')) $('#q').scrollIntoView({block: 'start'}) });
+  document.addEventListener('click', ev => {
+    if(ev.target.closest('[data-jump]')) $('#q').scrollIntoView({block: 'start'});
+    if(ev.target.closest('[data-editserver]')){  // the item card's ✎: to the server picker, unfolding its card if needed
+      const sel = $('#server'); if(!sel) return;
+      const d = sel.closest('details'); if(d) d.open = true;
+      sel.scrollIntoView({block: 'center'}); sel.focus({preventScroll: true});
+    }
+  });
 }
 // Nudge until the mastery levels are first set (any change saves them): everything costs more at level 1
 function masteryNudge(){
@@ -1482,7 +1516,30 @@ function serverPicker(){
   if(!LIVE && !S.hosted){ row.innerHTML = `<span class="hint">Server: <b>${esc(S.server.name)}</b> (${esc(S.server.region)}, ${esc(S.server.faction)})</span>`; return }
   const list = S.data.servers.filter(s => LIVE || S.hosted.servers.includes(s[0])).sort((a, b) => (a[2] + a[1]).localeCompare(b[2] + b[1]));
   row.innerHTML = `<label for="server" style="flex:0 0 auto">Server</label><select id="server">${list.map(s => `<option value="${s[0]}"${s[0] === S.server.id ? ' selected' : ''}>${esc(s[1])} · ${esc(s[2])} · ${esc(s[3])}</option>`).join('')}</select>`;
-  $('#server').addEventListener('change', ev => loadPrices(+ev.target.value));
+  $('#server').addEventListener('change', ev => pickServer(+ev.target.value));
+}
+// the picker shows the server whose prices are in use (it's drawn before they load, and a failed load keeps the old ones)
+function showServer(){ const sel = $('#server'); if(sel && S.server) sel.value = S.server.id }
+// Each faction has its own version of most gear (Star vs True Dragon Lord, say), as a recipe 10,000,000 ids apart.
+// Switching faction takes the open recipe (and an item page) along to the other version.
+const facOf = sid => (S.data.servers.find(s => s[0] === sid) || [])[3];
+const twinOf = r => S.data.recipes.find(t => t.id === r.id + (r.race === 'Light' ? 1e7 : -1e7) && t.race !== r.race)
+  || S.data.recipes.find(t => t.race !== r.race && t.p === r.p && !!t.g === !!r.g);
+function pickServer(id){
+  if(S.server && facOf(id) && facOf(id) !== S.server.faction){
+    const want = facOf(id) === 'Elyos' ? 'Light' : 'Dark';
+    if(PAGE_ITEM && S.hosted){
+      const mine = S.data.recipes.filter(r => slugOf(item(r.p)[0]) === PAGE_ITEM);
+      const t = !mine.some(r => r.race === want) && mine.length && twinOf(mine.find(r => !r.g) || mine[0]);
+      if(t){ store.set('server', id); location.href = `/item/${slugOf(item(t.p)[0])}?server=${id}`; return }
+    }
+    const r = S.open != null && S.data.recipes.find(r => r.id === S.open), t = r && twinOf(r);
+    if(t){
+      if(S.q === item(r.p)[0]){ S.q = item(t.p)[0]; $('#q').value = S.q }
+      S.open = t.id;
+    }
+  }
+  loadPrices(id);
 }
 async function loadLive(id, remember = true){
   const s = S.data.servers.find(x => x[0] === id);
@@ -1497,7 +1554,7 @@ async function loadLive(id, remember = true){
   }catch(e){
     S.liveOk = false;  // keep whatever prices we had; the status pill says so
   }
-  indexRecipes(); statusBar(); render();
+  showServer(); indexRecipes(); statusBar(); render();
   pollPrices(id);
 }
 // Hosted site: prices/<server>.json is rebuilt every hour (from :15, live by about :30), plus each server's weekly sale speeds
@@ -1512,7 +1569,7 @@ async function loadHosted(id, remember = true){
   }catch(e){
     S.liveOk = false;
   }
-  indexRecipes(); statusBar(); render();
+  showServer(); indexRecipes(); statusBar(); render();
   pollPrices(id);
 }
 const loadPrices = id => (LIVE ? loadLive : loadHosted)(id);
@@ -1554,7 +1611,7 @@ async function boot(){
     if(!known(id)) id = LIVE ? S.server.id : S.hosted.servers[0];
     // a linked item of the other faction only (Star vs True Dragon Lord gear, say): show it on a server of that
     // faction in the same region, without making that your server
-    const facOf = sid => (S.data.servers.find(s => s[0] === sid) || [])[3], raceOf = sid => facOf(sid) === 'Elyos' ? 'Light' : 'Dark';
+    const raceOf = sid => facOf(sid) === 'Elyos' ? 'Light' : 'Dark';
     const races = new Set(LINK.item ? S.data.recipes.filter(r => slugOf(item(r.p)[0]) === LINK.item).map(r => r.race) : []);
     if(races.size && !races.has(raceOf(id))){
       const twin = id + (facOf(id) === 'Elyos' ? 1000 : -1000), other = S.data.servers.map(s => s[0]).filter(sid => known(sid) && races.has(raceOf(sid)));

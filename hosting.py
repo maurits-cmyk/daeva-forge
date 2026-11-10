@@ -104,6 +104,20 @@ QUEST_TOOL = re.compile(r'^(Novice|Professional) .+ \(Bound\)$')   # as in app/i
 PROF_LABEL = {'Tailoring': 'Armorsmithing', 'Jewelcrafting': 'Handicrafting'}
 FACTION = {'Light': 'Elyos', 'Dark': 'Asmodian'}
 MAX_USES = 24
+# the card's icons: drawn once per page, used as <svg class="ico"><use href="#i-name"/></svg> (the app's item cost uses them too)
+_ICON_PATHS = {
+    'hammer': 'M13 5l6 6-2.5 2.5-6-6zM10.5 9.5L4 16l4 4 6.5-6.5',
+    'check': 'M5 12.5l4.5 4.5L19 7.5',
+    'spark': 'M12 3l2.2 6.8L21 12l-6.8 2.2L12 21l-2.2-6.8L3 12l6.8-2.2z',
+    'arrow': 'M4 12h15M13 6l6 6-6 6',
+    'shield': 'M12 3l8 3v6c0 4.6-3.4 8-8 9-4.6-1-8-4.4-8-9V6zM8.5 12l2.5 2.5 4.5-5',
+    'box': 'M4 8l8-4 8 4v8l-8 4-8-4zM4 8l8 4 8-4M12 12v8',
+    'pencil': 'M4 20l1-4.5L15.5 5 19 8.5 8.5 19zM13.5 7l3.5 3.5',
+    'down': 'M12 4v15M6 13l6 6 6-6',
+}
+ICONS = ('<svg width="0" height="0" style="position:absolute" aria-hidden="true">'
+         + ''.join(f'<symbol id="i-{k}" viewBox="0 0 24 24"><path d="{d}"/></symbol>' for k, d in _ICON_PATHS.items()) + '</svg>')
+icon = lambda k: f'<svg class="ico" aria-hidden="true"><use href="#i-{k}"/></svg>'
 
 
 def slug_of(name):
@@ -139,33 +153,35 @@ def item_pages(data):
             key = (r['prof'], r['ml'], r.get('tr'), r['y'], tuple(sorted((name(k), q) for k, q in r['c'])),
                    (name(r['combo']['p']), r['combo']['pct']) if r['combo'] else None)
             lines.setdefault(key, [r, set()])[1].add(r['race'])
-        items = []
+        blocks = []
         for (prof, ml, tr, y, _, _), (r, rr) in lines.items():
-            head = f'{PROF_LABEL.get(prof, prof)} {"transfer crafting" if tr else "Lv " + str(ml)}'
-            who = f' ({FACTION[next(iter(rr))]})' if len(rr) < len(races) else ''
-            mats = ', '.join(f'{q} × {link(k)}' for k, q in r['c'])
-            extra = (f'; makes {y}' if y > 1 else '') + ('; always succeeds' if tr else
-                     f'; Combo {r["combo"]["pct"]}%: {link(r["combo"]["p"])}' if r['combo'] else '')
-            items.append(f'<li><b>{e(head)}</b>{who}: {mats}{extra}</li>')
-        notes = []
+            tags = [f'<span class="tag">{FACTION[next(iter(rr))]}</span>'] if len(rr) < len(races) else []
+            tags += [f'<span>{icon("box")}makes {y}</span>'] if y > 1 else []
+            tags += ([f'<span class="ok">{icon("check")}always succeeds</span>'] if tr else
+                     [f'<span>{icon("spark")}Combo {r["combo"]["pct"]}%: {link(r["combo"]["p"])}</span>'] if r['combo'] else [])
+            mats = ''.join(f'<li><span class="q">{q}×</span> {link(k)}</li>' for k, q in r['c'])
+            blocks.append(f'    <div class="rcp"><p class="rcp-h">{icon("hammer")}<b>{e(PROF_LABEL.get(prof, prof))}</b>'
+                          f'<span class="muted">{"transfer" if tr else "Lv " + str(ml)}</span>{"".join(tags)}</p>\n'
+                          f'      <ul class="mats{" long" if len(r["c"]) > 5 else ""}">{mats}</ul></div>\n')
+        facts = []
         if any(r.get('g') for r in rs):
-            notes.append(f'Since the Nov 4 patch it also has a <a href="/item/{slug}?guaranteed=1">guaranteed recipe</a>: '
-                         'same materials, always succeeds, never Combos, makes Bound gear.')
+            facts.append(f'<li>{icon("shield")}<span><a href="/item/{slug}?guaranteed=1">Guaranteed recipe</a>: '
+                         'same materials, 100%, no Combo, Bound</span></li>')
         if slug in combos:
-            notes.append('Also comes from a Combo when crafting ' + ', '.join(link(k) for k in sorted(combos[slug], key=name)) + '.')
+            facts.append(f'<li>{icon("spark")}<span><b>Combo from</b> ' + ', '.join(link(k) for k in sorted(combos[slug], key=name)) + '</span></li>')
         used = sorted({slug_of(name(k)): k for k in uses.get(slug, ())}.values(), key=name)
         if used:
-            more = f' and {len(used) - MAX_USES} more' if len(used) > MAX_USES else ''
-            notes.append('<b>Used to make</b>: ' + ', '.join(link(k) for k in used[:MAX_USES]) + more + '.')
-        only = f' {FACTION[next(iter(races))]} only.' if len(races) == 1 else ''
+            more = f' +{len(used) - MAX_USES} more' if len(used) > MAX_USES else ''
+            facts.append(f'<li>{icon("arrow")}<span><b>Used in</b> ' + ', '.join(link(k) for k in used[:MAX_USES]) + more + '</span></li>')
+        only = f'<span class="tag">{FACTION[next(iter(races))]} only</span>' if len(races) == 1 else ''
         card = (f'<section class="settings itempage" id="itemCard" aria-label="{e(nm)}">\n'
+                f'    {ICONS}\n'
                 f'    <h1 class="card-title"><span><span class="g-{e(grade)}">{e(nm)}</span>: crafting cost</span></h1>\n'
-                f'    <p>What one {e(nm)} costs to craft in AION 2 on your server, failed attempts included.{only} '
-                'The calculator below opens it with current market prices: set your server and mastery levels.</p>\n'
-                '    <p class="itemcost" id="itemCost" hidden></p>\n'
-                f'    <p><b>Recipe{"s" if len(items) > 1 else ""}</b> (materials per attempt):</p>\n'
-                f'    <ul>{"".join(items)}</ul>\n'
-                + ''.join(f'    <p>{n}</p>\n' for n in notes)
+                f'    <p class="lede">AION 2 cost to craft one at market prices, failed attempts included.{only}</p>\n'
+                '    <div class="itemcost" id="itemCost" hidden></div>\n'
+                f'    <h2 class="rcp-title">Recipe{"s" if len(blocks) > 1 else ""} <span class="muted">materials per attempt</span></h2>\n'
+                + ''.join(blocks)
+                + (f'    <ul class="facts">{"".join(facts)}</ul>\n' if facts else '')
                 + '  </section>')
         prof = PROF_LABEL.get(first['prof'], first['prof'])
         level = 'transfer crafting' if first.get('tr') else f'Lv {first["ml"]}'
