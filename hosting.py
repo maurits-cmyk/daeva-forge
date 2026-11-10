@@ -235,6 +235,27 @@ def now():
     return datetime.now(timezone.utc).isoformat(timespec='seconds')
 
 
+def headers():
+    """dist/_headers: security headers for every page (Cloudflare applies them to the static files). The policy
+    allows only our own inline scripts (by hash, so a change to one updates the policy on the next build), Google
+    Fonts and Cloudflare's Web Analytics beacon."""
+    import base64, hashlib
+    scripts = {m.group(1) for f in DIST.rglob('*.html') for m in re.finditer(r'<script>(.*?)</script>', f.read_text(encoding='utf8'), re.S)}
+    hashes = ' '.join(sorted("'sha256-" + base64.b64encode(hashlib.sha256(s.encode('utf8')).digest()).decode() + "'" for s in scripts))
+    csp = '; '.join([
+        "default-src 'self'", f"script-src 'self' {hashes} https://static.cloudflareinsights.com",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", "font-src https://fonts.gstatic.com",
+        "img-src 'self' data:", "connect-src 'self' https://cloudflareinsights.com", "frame-ancestors 'none'",
+        "base-uri 'none'", "form-action 'self'", "object-src 'none'"])
+    return ('/*\n'
+            f'  Content-Security-Policy: {csp}\n'
+            '  Strict-Transport-Security: max-age=31536000; includeSubDomains\n'
+            '  X-Content-Type-Options: nosniff\n'
+            '  X-Frame-Options: DENY\n'
+            '  Referrer-Policy: strict-origin-when-cross-origin\n'
+            '  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()\n')
+
+
 def build():
     shutil.rmtree(DIST, ignore_errors=True)
     DIST.mkdir()
@@ -257,6 +278,7 @@ def build():
                                       + ''.join(f'  <url><loc>{SITE_URL}{p["path"]}</loc><lastmod>{day}</lastmod></url>\n' for p in [*PAGES.values(), index])
                                       + ''.join(f'  <url><loc>{SITE_URL}{p["path"]}</loc></url>\n' for p in items.values())
                                       + '</urlset>\n')
+    (DIST / '_headers').write_text(headers(), encoding='utf8')
     print(f'{len(items)} item pages; dist/ ready ({sum(f.stat().st_size for f in DIST.rglob("*") if f.is_file()) // 1024} KB)')
 
 
