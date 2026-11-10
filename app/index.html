@@ -323,16 +323,16 @@ footer a{color:var(--accent)}
 
   <section class="settings foldcard" aria-label="General settings">
     <details class="card" id="cardGeneral" open>
-      <summary class="card-title">General<span class="chip nudgechip" id="nudgeChip" hidden>set your mastery</span><button type="button" class="chip nudgechip" id="staleChip" title="Hide until tomorrow" hidden>update your mastery ×</button></summary>
+      <summary class="card-title">General</summary>
       <div class="card-body">
     <fieldset id="masteryBox">
-      <legend>Mastery level</legend>
+      <legend>Mastery level<span class="chip nudgechip" id="nudgeChip" hidden>set your mastery</span><button type="button" class="chip nudgechip" id="staleChip" title="Hide until tomorrow" hidden>update your mastery ×</button></legend>
       <div class="mastery" id="mastery"></div>
       <span class="hint"><b class="nudgetext" id="nudgeText" hidden>Set your levels first: costs and success chances depend on them. </b>Use the number in brackets in-game (Professional Lv. 14 = 64).</span>
     </fieldset>
     <div class="stack">
     <fieldset>
-      <legend>Market</legend>
+      <legend>Market<span class="chip nudgechip" id="serverChip" hidden>set your server</span></legend>
       <div class="row" id="serverRow"></div>
       <div class="mastery">
         <label for="tax">Fees on sales (%)</label><input type="number" id="tax" min="0" max="50" step="0.5" value="12">
@@ -1530,7 +1530,10 @@ function masteryNudge(){
   $('#nudgeText').hidden = $('#nudgeChip').hidden = !unset;
   $('#staleChip').hidden = unset || Date.now() - store.get('masteryAt', 0) < STALE_MASTERY;
 }
-$('#staleChip').addEventListener('click', ev => { ev.preventDefault(); store.set('masteryAt', Date.now()); masteryNudge() });  // inside the card's summary: don't fold it
+$('#staleChip').addEventListener('click', () => { store.set('masteryAt', Date.now()); masteryNudge() });
+// Nudge until a server is picked (people stick to one, so no reminder after that). Visitors from before this
+// count as having picked one if theirs isn't the default.
+function serverNudge(){ $('#serverChip').hidden = !!store.get('serverPicked', false) || !S.server || !(LIVE || S.hosted) }
 function manualCount(){
   const keys = Object.keys(S.manual);
   $('#manualRow').hidden = !keys.length;
@@ -1551,6 +1554,7 @@ const facOf = sid => (S.data.servers.find(s => s[0] === sid) || [])[3];
 const twinOf = r => S.data.recipes.find(t => t.id === r.id + (r.race === 'Light' ? 1e7 : -1e7) && t.race !== r.race)
   || S.data.recipes.find(t => t.race !== r.race && t.p === r.p && !!t.g === !!r.g);
 function pickServer(id){
+  store.set('serverPicked', true); serverNudge();
   if(S.server && facOf(id) && facOf(id) !== S.server.faction){
     const want = facOf(id) === 'Elyos' ? 'Light' : 'Dark';
     if(PAGE_ITEM && S.hosted){
@@ -1634,6 +1638,8 @@ async function boot(){
   LINK.ready = true;  // the first drawing after this opens a linked item
   const known = id => id && (LIVE ? S.data.servers.some(s => s[0] === id) : S.hosted.servers.includes(id));
   if(LIVE || (S.hosted && S.hosted.servers.length)){
+    const stored = store.get('server', null);
+    if(stored != null && stored !== S.server.id) store.set('serverPicked', true);  // S.server: still the default here
     let id = known(LINK.server) ? LINK.server : store.get('server', S.server.id), remember = true;
     if(!known(id)) id = LIVE ? S.server.id : S.hosted.servers[0];
     // a linked item of the other faction only (Star vs True Dragon Lord gear, say): show it on a server of that
@@ -1647,6 +1653,7 @@ async function boot(){
     await (LIVE ? loadLive : loadHosted)(id, remember);
   }
   else { statusBar(); render() }
+  serverNudge();
 }
 boot();
 </script>
