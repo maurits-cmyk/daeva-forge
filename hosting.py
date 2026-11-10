@@ -24,6 +24,7 @@ UA = {'User-Agent': 'DaevaForge/0.2 (+https://daevaforge.com; mawreez@daevaforge
 GAP = 4.0          # seconds between servers in the hourly run (about 12 minutes for 106 servers)
 BUDGET = 20 * 60   # stop fetching after this; the rest keep their last published prices, so a slow hour still deploys
 SPEED_GAP = 0.5    # seconds between item requests in the daily sale-speed run
+SANE_SHARE = 0.5  # a server answering with fewer than half the prices of its last run keeps the last run's
 
 # Two pages, one app: the address picks the mode (app/index.html reads location.pathname)
 PAGES = {
@@ -297,27 +298,36 @@ def prices():
     keys = set(json.load(open(APP / 'data.json', encoding='utf8'))['items'])
     out = DIST / 'prices'
     out.mkdir(parents=True, exist_ok=True)
-    done, kept, start = [], [], time.time()
+    done, kept, caps, start = [], [], [], time.time()
     for n, sid in enumerate([int(x) for x in sys.argv[2:]] or servers()):   # server ids on the command line: just those
         if n: time.sleep(GAP)
         try:
+            last = json.loads(published(f'prices/{sid}.json'))
+        except Exception:
+            last = None
+        try:
             if time.time() - start > BUDGET:
                 raise TimeoutError('out of time this hour')
-            items = market(sid, keys, tries=3)   # Aion2Market answers 503 when busy: give up quickly, keep the last copy
+            items = market(sid, keys, tries=3)   # an item without sellers has no price but keeps its last one
+            # a half-empty answer (Aion2Market mid-update, say) would wipe out good prices: keep the last copy instead
+            had = len(last['prices']) if last else 0
+            if len(items) < SANE_SHARE * had:
+                raise ValueError(f'only {len(items)} prices, the last run had {had}')
         except Exception as e:  # keep the last published copy so the server doesn't vanish for an hour
             print(f'{sid}: {e}')
-            try:
-                (out / f'{sid}.json').write_bytes(published(f'prices/{sid}.json')); done.append(sid); kept.append(sid)
-            except Exception:
-                pass
+            if last:
+                (out / f'{sid}.json').write_text(json.dumps(last, separators=(',', ':')), encoding='utf8')
+                done.append(sid); kept.append(sid); caps.append(last.get('captured'))
             continue
         captured = max((m['captured_at'] for m in items if m.get('captured_at')), default=None)
         data = {'server': sid, 'fetched': now(), 'captured': captured,
                 'prices': {str(m['item_key']): [m['price'], m['listings'], m['last_price'], m['last_seen_at']] for m in items}}
         (out / f'{sid}.json').write_text(json.dumps(data, separators=(',', ':')), encoding='utf8')
-        done.append(sid)
+        done.append(sid); caps.append(captured)
     have_speeds = sorted(int(f.stem) for f in (DIST / 'speeds').glob('*.json'))
-    (out / 'index.json').write_text(json.dumps({'servers': done, 'speeds': have_speeds, 'fetched': now()}), encoding='utf8')
+    # captured: Aion2Market's newest capture among all servers (the Worker's staleness alarm reads it)
+    (out / 'index.json').write_text(json.dumps({'servers': done, 'speeds': have_speeds, 'fetched': now(), 'kept': kept,
+                                                'captured': max(filter(None, caps), default=None)}), encoding='utf8')
     print(f'{len(done)} servers ({len(kept)} kept from the last run)')
     if not done:
         sys.exit('no prices fetched')
