@@ -27,6 +27,8 @@ header .unofficial{grid-area:badge;justify-self:end;align-self:start}
 header .status{grid-area:status}
 header .support{grid-area:support;justify-self:end}
 .h1,header h1{display:flex;align-items:center;gap:12px;font:400 28px/1.1 var(--f-display);letter-spacing:.03em;margin:0;text-wrap:balance}
+.h1 .home,header h1 .home{display:flex;align-items:center;gap:12px;color:inherit;text-decoration:none}
+.h1 .home:hover .emblem,header h1 .home:hover .emblem{filter:drop-shadow(0 0 6px rgba(95,214,232,.45))}
 .h1 .emblem,header h1 .emblem{flex:0 0 auto;width:38px;height:38px}
 .h1 small,header h1 small{display:block;font:500 11px/1.4 var(--f-body);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:5px}
 .status{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12.5px;color:var(--muted)}
@@ -145,6 +147,8 @@ details>summary{list-style-position:inside}
 tr.grp>td{padding:0;background:var(--panel-2);border-bottom:1px solid var(--line)}
 tr.grp button{font:600 11.5px/1.3 var(--f-body);letter-spacing:.1em;text-transform:uppercase;color:var(--ink);background:transparent;border:0;width:100%;display:flex;align-items:baseline;gap:8px;padding:9px 12px;cursor:pointer;text-align:left;--cw:16px}
 tr.grp button:hover{color:#fff}
+tr.grp.pin>td{background:rgba(95,214,232,.08);border-bottom-color:rgba(95,214,232,.35)}
+tr.grp.pin button{color:var(--cyan)}
 tr.grp .muted{margin-left:auto;font-weight:400;letter-spacing:0;text-transform:none;font-size:12px}
 #tbl.stacked>tbody>tr.grp,#tbl.stacked>tbody>tr.grp>td{display:block}
 tr.sheet>td{background:rgba(5,6,9,.55);padding:0;border-bottom:1px solid var(--accent)}
@@ -234,6 +238,7 @@ span.ownx{display:inline-block;cursor:default}
 .itemcost .srv{display:inline-flex;align-items:center;gap:2px;color:var(--ink)}
 .itemcost .cost{font-size:15px}
 .itemcost .cost b{font-size:21px;color:#fff;font-weight:600}
+.itemcost .approx{color:var(--muted);font-weight:400;margin-right:4px}
 .itemcost .alt{color:var(--muted)}
 .itemcost .alt b{color:var(--ink)}
 .iconbtn{border:0;background:transparent;color:var(--muted);padding:5px;margin:-5px 0;cursor:pointer;border-radius:3px;display:inline-flex}
@@ -260,7 +265,9 @@ span.ownx{display:inline-block;cursor:default}
 #masteryBox.nudge input[type=number]{border-color:rgba(95,214,232,.7);box-shadow:0 0 8px rgba(95,214,232,.25);animation:nudge 1.8s ease-in-out 3}
 @keyframes nudge{50%{border-color:var(--cyan);box-shadow:0 0 14px 2px rgba(95,214,232,.5)}}
 .nudgetext{color:var(--cyan);font-weight:600}
-.chip.nudgechip{color:var(--cyan);border-color:rgba(95,214,232,.5);letter-spacing:normal;text-transform:none;margin-left:10px}
+.chip.nudgechip{color:var(--cyan);border-color:rgba(95,214,232,.5);letter-spacing:normal;text-transform:none;margin-left:10px;animation:blink 2.6s ease-in-out infinite}
+button.chip.nudgechip{font:500 11px/1.5 var(--f-body);cursor:pointer}
+@keyframes blink{50%{opacity:.35;box-shadow:none}0%,100%{box-shadow:0 0 8px rgba(95,214,232,.35)}}
 footer{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:12px}
 footer p{margin:0}
 footer a{color:var(--accent)}
@@ -308,7 +315,7 @@ footer a{color:var(--accent)}
 
 <div class="wrap">
   <header>
-    <h1><svg class="emblem" viewBox="0 0 40 40" aria-hidden="true"><defs><radialGradient id="eg" cx="50%" cy="45%" r="55%"><stop offset="0" stop-color="#2b3340"/><stop offset="1" stop-color="#0d1015"/></radialGradient></defs><circle cx="20" cy="20" r="18.5" fill="url(#eg)" stroke="#5fd6e8" stroke-opacity=".55"/><circle cx="20" cy="20" r="15" fill="none" stroke="#fff" stroke-opacity=".12"/><path d="M11 18h14l2-3h3l-2 5h-3l-1 2h-4l2 5h4v2H13v-2h4l2-5h-3c-3 0-5-2-5-4z" fill="#e7eaee"/><path d="M30 9l.9 2.1L33 12l-2.1.9L30 15l-.9-2.1L27 12l2.1-.9z" fill="#5fd6e8"/></svg><span>Daeva Forge <span class="beta">Beta</span><small id="tagline">AION 2 crafting calculator</small></span></h1>
+    <h1><a class="home" id="homeLink" href="/" title="Daeva Forge home"><svg class="emblem" viewBox="0 0 40 40" aria-hidden="true"><defs><radialGradient id="eg" cx="50%" cy="45%" r="55%"><stop offset="0" stop-color="#2b3340"/><stop offset="1" stop-color="#0d1015"/></radialGradient></defs><circle cx="20" cy="20" r="18.5" fill="url(#eg)" stroke="#5fd6e8" stroke-opacity=".55"/><circle cx="20" cy="20" r="15" fill="none" stroke="#fff" stroke-opacity=".12"/><path d="M11 18h14l2-3h3l-2 5h-3l-1 2h-4l2 5h4v2H13v-2h4l2-5h-3c-3 0-5-2-5-4z" fill="#e7eaee"/><path d="M30 9l.9 2.1L33 12l-2.1.9L30 15l-.9-2.1L27 12l2.1-.9z" fill="#5fd6e8"/></svg><span>Daeva Forge <span class="beta">Beta</span><small id="tagline">AION 2 crafting calculator</small></span></a></h1>
     <span class="pill unofficial" title="Not affiliated with NCSOFT">Unofficial fan site</span><div class="status" id="status"><span class="pill">Loading recipes and prices…</span></div><div class="support"><a class="support-btn" href="https://ko-fi.com/daevaforge" target="_blank" rel="noopener" title="Opens our Ko-fi page"><span class="heart" aria-hidden="true">♥</span>Support Us</a></div>
   </header>
 
@@ -316,7 +323,7 @@ footer a{color:var(--accent)}
 
   <section class="settings foldcard" aria-label="General settings">
     <details class="card" id="cardGeneral" open>
-      <summary class="card-title">General<span class="chip nudgechip" id="nudgeChip" hidden>set your mastery</span></summary>
+      <summary class="card-title">General<span class="chip nudgechip" id="nudgeChip" hidden>set your mastery</span><button type="button" class="chip nudgechip" id="staleChip" title="Hide until tomorrow" hidden>update your mastery ×</button></summary>
       <div class="card-body">
     <fieldset id="masteryBox">
       <legend>Mastery level</legend>
@@ -545,8 +552,10 @@ function openLinked(){
   const r = RECIPES.filter(r => slugOf(item(r.p)[0]) === want).sort((a, b) => (!!b.g === LINK.g) - (!!a.g === LINK.g))[0];
   if(!r) return;
   // search for it, so its group opens and the recipes around it (its upgrades, what it's made from) show too
-  S.open = r.id; S.q = item(r.p)[0]; $('#q').value = S.q;
-  if(!PAGE_ITEM) LINK.scroll = r.id;  // an item page starts at its card, which shows the cost
+  // (an item page pins them above the whole list instead, and starts at its card, which shows the cost)
+  S.open = r.id;
+  if(PAGE_ITEM) S.pin = item(r.p)[0];
+  else { S.q = item(r.p)[0]; $('#q').value = S.q; LINK.scroll = r.id }
 }
 function syncUrl(){
   if(!LINKS() || !MODE_PAGE[S.mode]) return;
@@ -974,7 +983,7 @@ function itemCost(){
   if(!es.length) return;
   const ico = k => `<svg class="ico" aria-hidden="true"><use href="#i-${k}"/></svg>`, main = old || g;
   el.innerHTML = `<span class="srv">${esc(S.server.name)}<button type="button" class="iconbtn" data-editserver title="Change server" aria-label="Change server">${ico('pencil')}</button></span>`
-    + (main ? `<span class="cost">≈ <b>${kina(main[1])}</b> Kina each</span>`
+    + (main ? `<span class="cost"><b><span class="approx">≈</span>${kina(main[1])}</b> Kina each</span>`
       + (main[0].s.locked ? `<span class="alt">at ${esc(pl(main[0].r.prof))} Lv ${main[0].r.ml}</span>` : '')
       + (old && g ? `<span class="alt">${ico('shield')} guaranteed <b>${kina(g[1])}</b></span>` : '')
       : '<span class="alt">Some prices missing</span>')
@@ -983,6 +992,9 @@ function itemCost(){
 function renderRows(room = 99, pre = null, stacked = false){  // room: optional columns to try; pre: rows already evaluated and sorted; stacked: card layout
   if(!pre) memo = new Map(), HIDDEN_BY = new Map();
   const q = S.q.trim().toLowerCase();
+  // a search matches recipes for an item and those it's a material of; an item page pins its matches above the list
+  const hits = (e, s) => e.name.toLowerCase().includes(s) || e.r.c.some(([k]) => item(k)[0].toLowerCase().includes(s));
+  const pin = S.mode === 'single' && S.pin ? S.pin.toLowerCase() : '';
   // the filter (named as in the settings) that hides a recipe, or null
   const hiddenBy = e => {
     if(S.mode === 'profit' && S.canCraft && e.s.locked) return 'Only recipes I can craft now';
@@ -995,7 +1007,7 @@ function renderRows(room = 99, pre = null, stacked = false){  // room: optional 
   let rows = pre || RECIPES.map(evaluate).filter(e => {
     // leveling: recipes of the chosen profession you can craft now that give EXP
     if(S.mode === 'exp' && (e.r.prof !== S.xpProf || e.s.locked || e.xp.base == null)) return false;
-    if(q && !(e.name.toLowerCase().includes(q) || e.r.c.some(([k]) => item(k)[0].toLowerCase().includes(q)))) return false;
+    if(q && !hits(e, q) && !(pin && hits(e, pin))) return false;
     const by = S.mode === 'exp' ? null : hiddenBy(e);
     if(by && q) HIDDEN_BY.set(by, (HIDDEN_BY.get(by) || 0) + 1);  // a search says what its hidden matches are hidden by
     return !by;
@@ -1050,15 +1062,19 @@ function renderRows(room = 99, pre = null, stacked = false){  // room: optional 
       + (open ? `<tr class="sheet"><td colspan="${cols}">${S.mode === 'single' ? singleSheet(e) : sheet(e)}</td></tr>` : '');
   };
   // transfer crafts come in tiers by item level, then the guaranteed crafts, above the other recipes; each a foldable group
-  const tiers = rows.some(e => e.r.tr || e.r.g) ? ['5', '4', '3', '2', '1', 'g', 'rest'] : null;
+  const pinned = pin ? rows.filter(e => hits(e, pin)).sort((a, b) => (b.name.toLowerCase() === pin) - (a.name.toLowerCase() === pin)) : [];
+  const rest = pinned.length ? rows.filter(e => !pinned.includes(e)) : rows;
+  const tiers = rest.some(e => e.r.tr || e.r.g) ? ['5', '4', '3', '2', '1', 'g', 'rest'] : null;
   const groupOf = e => e.r.tr ? String(e.r.tr) : e.r.g ? 'g' : 'rest';
-  body.innerHTML = !tiers ? rows.map(rowHtml).join('') : tiers.map(t => {
-    const rs = rows.filter(e => groupOf(e) === t);
+  const pinHtml = !pinned.length ? '' : `<tr class="grp pin"><td colspan="${cols}"><button type="button" data-grp="pin" aria-expanded="${!PIN_FOLDED}"><span class="fold">${PIN_FOLDED ? '▸' : '▾'}</span>${esc(S.pin)} and related<span class="muted">${pinned.length} recipe${pinned.length === 1 ? '' : 's'}</span></button></td></tr>`
+    + (PIN_FOLDED ? '' : pinned.map(rowHtml).join(''));
+  body.innerHTML = pinHtml + (!tiers ? rest.map(rowHtml).join('') : tiers.map(t => {
+    const rs = rest.filter(e => groupOf(e) === t);
     if(!rs.length) return '';
     const folded = tierFolded(t, q);
     return `<tr class="grp"><td colspan="${cols}"><button type="button" data-grp="${t}" aria-expanded="${!folded}"><span class="fold">${folded ? '▸' : '▾'}</span>${t === 'rest' ? 'Other recipes' : t === 'g' ? 'Guaranteed crafts · item level 62' : 'Transfer crafts · item level ' + (62 + 8 * t)}<span class="muted">${rs.length} recipe${rs.length === 1 ? '' : 's'}</span></button></td></tr>`
       + (folded ? '' : rs.map(rowHtml).join(''));
-  }).join('');
+  }).join(''));
   summary(rows);
   // never scroll sideways: on narrow screens switch to cards (all ticked columns); otherwise drop the
   // lowest-priority column and redraw until the table fits
@@ -1071,6 +1087,7 @@ function renderRows(room = 99, pre = null, stacked = false){  // room: optional 
 // Folded tier groups: the top tier and the other recipes start open. A search opens every group (folds made
 // while searching last until the search changes).
 const LIST_FOLD = store.get('listFold', {}), SEARCH_FOLD = {q: '', tiers: new Set()};
+let PIN_FOLDED = false;  // an item page's pinned group, open until folded (not remembered)
 function tierFolded(t, q){
   if(!q) return LIST_FOLD[t] ?? (t !== '5' && t !== 'rest');
   if(SEARCH_FOLD.q !== q){ SEARCH_FOLD.q = q; SEARCH_FOLD.tiers = new Set() }
@@ -1374,7 +1391,7 @@ function buildSettings(){
   PROFS.forEach(p => {
     const num = $('#m-' + p), sl = $('#r-' + p);
     const show = v => { num.value = sl.value = v; sl.style.setProperty('--p', (v - 1) / (MAX_MASTERY - 1) * 100 + '%') };
-    const commit = v => { S.mastery[p] = Math.max(1, Math.min(MAX_MASTERY, Math.round(+v) || 1)); show(S.mastery[p]); store.set('mastery', S.mastery); masteryNudge(); syncMode(); render() };
+    const commit = v => { S.mastery[p] = Math.max(1, Math.min(MAX_MASTERY, Math.round(+v) || 1)); show(S.mastery[p]); store.set('mastery', S.mastery); store.set('masteryAt', Date.now()); masteryNudge(); syncMode(); render() };
     show(S.mastery[p] || 1);
     sl.addEventListener('input', () => show(+sl.value));
     sl.addEventListener('change', () => commit(sl.value));
@@ -1460,6 +1477,7 @@ function buildSettings(){
     }
     const grp = ev.target.closest('[data-grp]');
     if(grp){
+      if(grp.dataset.grp === 'pin'){ PIN_FOLDED = !PIN_FOLDED; render(); return }
       const t = grp.dataset.grp, q = S.q.trim().toLowerCase(), folded = tierFolded(t, q);
       if(q){ if(folded) SEARCH_FOLD.tiers.delete(t); else SEARCH_FOLD.tiers.add(t) }
       else { LIST_FOLD[t] = !folded; store.set('listFold', LIST_FOLD) }
@@ -1501,11 +1519,15 @@ function buildSettings(){
   });
 }
 // Nudge until the mastery levels are first set (any change saves them): everything costs more at level 1
+// and once levels are set, a day after they last changed (or the reminder was last dismissed), a reminder to update them
+const STALE_MASTERY = 864e5;
 function masteryNudge(){
   const unset = store.get('mastery', null) == null;
   $('#masteryBox').classList.toggle('nudge', unset);
   $('#nudgeText').hidden = $('#nudgeChip').hidden = !unset;
+  $('#staleChip').hidden = unset || Date.now() - store.get('masteryAt', 0) < STALE_MASTERY;
 }
+$('#staleChip').addEventListener('click', ev => { ev.preventDefault(); store.set('masteryAt', Date.now()); masteryNudge() });  // inside the card's summary: don't fold it
 function manualCount(){
   const keys = Object.keys(S.manual);
   $('#manualRow').hidden = !keys.length;
@@ -1536,6 +1558,7 @@ function pickServer(id){
     const r = S.open != null && S.data.recipes.find(r => r.id === S.open), t = r && twinOf(r);
     if(t){
       if(S.q === item(r.p)[0]){ S.q = item(t.p)[0]; $('#q').value = S.q }
+      if(S.pin === item(r.p)[0]) S.pin = item(t.p)[0];
       S.open = t.id;
     }
   }
@@ -1602,6 +1625,7 @@ async function boot(){
   }
   setInterval(statusBar, 6e4);  // keep "updated X min ago" current
   $('#allItemsBtn').hidden = !S.hosted;  // the item pages are on the hosted site only
+  if(!LINKS()) $('#homeLink').removeAttribute('href');  // the claude.ai copy has no home page to go to
   buildSettings(); foldCards(); indexRecipes(); serverPicker(); feedbackForm();
   // the first drawing waits for the prices, so the list doesn't flash "price missing"
   LINK.ready = true;  // the first drawing after this opens a linked item
