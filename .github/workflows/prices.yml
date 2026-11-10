@@ -27,9 +27,11 @@ jobs:
           python-version: '3.12'
       - run: python hosting.py build
       - run: python hosting.py prices
+      - run: python hosting.py changed  # pages that differ from the live site, for IndexNow after the deploy
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: '4'  # the action's default (3.90) predates wrangler.jsonc
           command: deploy
+      - run: python hosting.py indexnow

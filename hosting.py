@@ -4,6 +4,8 @@
   python hosting.py prices   # current asks for the servers in site/servers.txt -> dist/prices/ (hourly; or give ids)
   python hosting.py speeds   # sale speeds for today's seventh of the servers -> site/speeds/ (daily; committed)
   python hosting.py due      # exit 0 if the live prices predate this hour's capture (the fallback run is needed)
+  python hosting.py changed  # before deploying: list the pages that differ from the live site -> changed.txt
+  python hosting.py indexnow # after deploying: tell Bing, Yandex and the other IndexNow engines about changed.txt
 
 GitHub Actions runs `build` + `prices` and deploys dist/ every hour, started at :15 by the Worker's cron trigger
 (Aion2Market captures at about :07-:11), with GitHub's own late schedule as a fallback; `speeds` runs once a day, so every server's sale speeds refresh weekly. Recipes, success
@@ -24,6 +26,7 @@ UA = {'User-Agent': 'DaevaForge/0.2 (+https://daevaforge.com; mawreez@daevaforge
 GAP = 4.0          # seconds between servers in the hourly run (about 12 minutes for 106 servers)
 BUDGET = 20 * 60   # stop fetching after this; the rest keep their last published prices, so a slow hour still deploys
 SPEED_GAP = 0.5    # seconds between item requests in the daily sale-speed run
+INDEXNOW_KEY = 'b34f89a544390568f2f0177559c9fc92'  # not a secret: the engines check it against /<key>.txt on the site
 SANE_SHARE = 0.5  # a server answering with fewer than half the prices of its last run keeps the last run's
 
 # Two pages, one app: the address picks the mode (app/index.html reads location.pathname)
@@ -280,7 +283,42 @@ def build():
                                       + ''.join(f'  <url><loc>{SITE_URL}{p["path"]}</loc></url>\n' for p in items.values())
                                       + '</urlset>\n')
     (DIST / '_headers').write_text(headers(), encoding='utf8')
+    # IndexNow: the key file, and a fingerprint of every page so the next deploy can tell which ones changed
+    (DIST / f'{INDEXNOW_KEY}.txt').write_text(INDEXNOW_KEY)
+    import hashlib
+    pages = [*PAGES.values(), index, *items.values()]
+    (DIST / 'pages.json').write_text(json.dumps({p['path']: hashlib.sha1((DIST / (p.get('file') or 'items.html')).read_bytes()).hexdigest()[:16]
+                                                 for p in pages}, separators=(',', ':')), encoding='utf8')
     print(f'{len(items)} item pages; dist/ ready ({sum(f.stat().st_size for f in DIST.rglob("*") if f.is_file()) // 1024} KB)')
+
+
+def changed():
+    """Pages whose content differs from the live site (all of them if it has no fingerprints yet) -> changed.txt"""
+    new = json.loads((DIST / 'pages.json').read_text(encoding='utf8'))
+    try:
+        old = json.loads(published('pages.json'))
+    except Exception:
+        old = {}
+    urls = [SITE_URL + path for path, h in new.items() if old.get(path) != h]
+    (ROOT / 'changed.txt').write_text('\n'.join(urls))
+    print(f'{len(urls)} of {len(new)} pages changed')
+
+
+def indexnow():
+    """Submit changed.txt to IndexNow (api.indexnow.org passes it on to Bing, Yandex, Seznam, Naver...)."""
+    import urllib.request
+    f = ROOT / 'changed.txt'
+    urls = f.read_text().split() if f.exists() else []
+    if not urls:
+        return print('nothing to submit')
+    body = json.dumps({'host': SITE_URL.split('//')[1], 'key': INDEXNOW_KEY, 'keyLocation': f'{SITE_URL}/{INDEXNOW_KEY}.txt',
+                       'urlList': urls[:10000]}).encode()
+    req = urllib.request.Request('https://api.indexnow.org/indexnow', data=body, method='POST',
+                                 headers={'Content-Type': 'application/json; charset=utf-8', **UA})
+    try:
+        print(f'IndexNow: {urllib.request.urlopen(req, timeout=30).status} for {len(urls)} pages')
+    except Exception as e:  # never fail the deploy over it
+        print(f'IndexNow: {e}')
 
 
 def market(server_id, keys, tries=5):
@@ -371,4 +409,4 @@ def speeds():
 
 if __name__ == '__main__':
     cmd = sys.argv[1] if len(sys.argv) > 1 else ''
-    {'build': build, 'prices': prices, 'speeds': speeds, 'due': due}.get(cmd, lambda: sys.exit(__doc__))()
+    {'build': build, 'prices': prices, 'speeds': speeds, 'due': due, 'changed': changed, 'indexnow': indexnow}.get(cmd, lambda: sys.exit(__doc__))()
