@@ -229,6 +229,8 @@ span.ownx{display:inline-block;cursor:default}
 .itempage ul{padding-left:18px}
 .itempage li+li{margin-top:4px}
 .itempage a{color:var(--accent)}
+.pagelink{color:var(--muted);text-decoration:none;font-size:12px;margin-left:5px;padding:0 2px}
+.pagelink:hover,.pagelink:focus-visible{color:var(--accent)}
 /* until a mastery level is first set: glowing level boxes (pulsing a few times), a line saying why, a chip on the card's title */
 #masteryBox.nudge legend{color:var(--cyan)}
 #masteryBox.nudge input[type=number]{border-color:rgba(95,214,232,.7);box-shadow:0 0 8px rgba(95,214,232,.25);animation:nudge 1.8s ease-in-out 3}
@@ -530,6 +532,14 @@ function syncUrl(){
   const url = r ? (pages ? `/item/${slugOf(item(r.p)[0])}?${q}` : `${MODE_PAGE[S.mode].path}?item=${slugOf(item(r.p)[0])}&${q}`)
     : pages && PAGE_ITEM ? '/item/' + PAGE_ITEM : MODE_PAGE[S.mode].path;
   if(location.pathname + location.search !== url) try{ history.replaceState(null, '', url) }catch(e){}
+}
+// A small ↗ after an item's name, to its page (hosted site only; every craftable item has one)
+let PAGE_SLUGS = null;
+function pageLink(k){
+  if(!S.hosted) return '';
+  PAGE_SLUGS ??= new Set(S.data.recipes.filter(r => (r.ml > 0 || r.tr || r.g) && !QUEST_TOOL.test(item(r.p)[0])).map(r => slugOf(item(r.p)[0])));
+  const nm = item(k)[0], slug = slugOf(nm);
+  return PAGE_SLUGS.has(slug) && slug !== PAGE_ITEM ? `<a class="pagelink" href="/item/${slug}" title="${esc(nm)}: its own page" aria-label="${esc(nm)} page">↗</a>` : '';
 }
 const copyLink = () => LINKS() ? '<button type="button" class="chip copylink" data-copylink>copy link</button>' : '';
 
@@ -991,7 +1001,7 @@ function renderRows(room = 99, pre = null, stacked = false){  // room: optional 
     const showProf = vis.some(c => c.k === 'prof');
     const tone = v => v == null ? '' : v >= 0 ? 'gain' : 'loss';
     const cell = {
-      name: () => `<td><span class="name g-${esc(g)}">${esc(e.name)}</span>${e.r.y > 1 ? `<span class="chip">×${e.r.y}</span>` : ''}${chips}<span class="sub">${showProf ? '' : esc(pl(e.r.prof)) + ' ' + (e.s.locked && S.mode === 'single' ? `<span class="loss" title="Your ${esc(pl(e.r.prof))} mastery is ${S.mastery[e.r.prof] || 1}">Lv ${e.r.ml}</span>` : lvText(e.r)) + ' · '}${e.r.combo ? 'Combo ' + e.r.combo.pct + '%: ' + esc(item(e.r.combo.p)[0]) : 'no Combo upgrade'}</span></td>`,
+      name: () => `<td><span class="name g-${esc(g)}">${esc(e.name)}</span>${pageLink(e.r.p)}${e.r.y > 1 ? `<span class="chip">×${e.r.y}</span>` : ''}${chips}<span class="sub">${showProf ? '' : esc(pl(e.r.prof)) + ' ' + (e.s.locked && S.mode === 'single' ? `<span class="loss" title="Your ${esc(pl(e.r.prof))} mastery is ${S.mastery[e.r.prof] || 1}">Lv ${e.r.ml}</span>` : lvText(e.r)) + ' · '}${e.r.combo ? 'Combo ' + e.r.combo.pct + '%: ' + esc(item(e.r.combo.p)[0]) : 'no Combo upgrade'}</span></td>`,
       prof: () => `<td>${esc(pl(e.r.prof))}<span class="sub">Lv ${e.r.ml} · you ${S.mastery[e.r.prof] || 1}</span></td>`,
       p: () => `<td class="num">${pct(e.s.p)}</td>`,
       cost: () => `<td class="num">${kina(e.cost)}</td>`,
@@ -1107,7 +1117,7 @@ function treeRows(k, qty, depth, path, stack, ctx){
     if(ctx && cost != null) cost -= ctx.saved - saved0;   // owned materials in this branch
   }
   if(ctx && depth === 0 && cost != null) ctx.sum += cost;
-  const row = (folded, guides, noteGuides) => `<tr class="tree d${Math.min(depth, 6)}${open ? ' foldable' : ''}"${fold(folded)}><td><span class="tname" style="--d:${depth}">${guides}${caret(folded)}<span><span class="qinline">${fmtQty(need)} × </span><span class="g-${esc(nm[1] || 'Common')}">${esc(nm[0])}</span>${ownInline}</span></span></td><td class="num q">${qtyCell}</td>
+  const row = (folded, guides, noteGuides) => `<tr class="tree d${Math.min(depth, 6)}${open ? ' foldable' : ''}"${fold(folded)}><td><span class="tname" style="--d:${depth}">${guides}${caret(folded)}<span><span class="qinline">${fmtQty(need)} × </span><span class="g-${esc(nm[1] || 'Common')}">${esc(nm[0])}</span>${pageLink(k)}${ownInline}</span></span></td><td class="num q">${qtyCell}</td>
     <td><div class="opts" role="group" aria-label="Buy, craft or morph ${esc(nm[0])}">${buyOpt}${craftOpt}${morphOpt}${chosen !== 'cheapest' && chosen !== S.sourcing ? '<button type="button" class="chip" data-src="' + k + '" data-v="">reset</button>' : ''}</div></td>
     ${ownCell}<td class="num${depth ? ' muted' : ''}">${cost == null ? '–' : kina(cost)}</td></tr>`
     + (open ? `<tr class="tnote foldable"${fold(folded)}><td colspan="${ctx ? 5 : 4}"><span class="tindent" style="--d:${depth}">${noteGuides}${note}${folded ? ` · ${kids.length} material${kids.length === 1 ? '' : 's'} hidden` : ''}</span></td></tr>` : '');
@@ -1444,11 +1454,11 @@ function buildSettings(){
     if(clr){ delete S.manual[clr.dataset.clear]; store.set('manual', S.manual); manualCount(); render(); return }
     const src = ev.target.closest('[data-src]');
     if(src){ const k = src.dataset.src; if(src.dataset.v) S.src[k] = src.dataset.v; else delete S.src[k]; store.set('src', S.src); render(); return }
-    if(ev.target.closest('.sheet')) return;
+    if(ev.target.closest('.sheet, a')) return;
     const tr = ev.target.closest('tr.rec'); if(!tr) return;
     S.open = S.open === +tr.dataset.id ? null : +tr.dataset.id; render();
   });
-  rowsEl.addEventListener('keydown', ev => { const tr = ev.target.closest('tr.rec'); if(tr && (ev.key === 'Enter' || ev.key === ' ')){ ev.preventDefault(); S.open = S.open === +tr.dataset.id ? null : +tr.dataset.id; render(); document.querySelector(`tr.rec[data-id="${tr.dataset.id}"]`)?.focus() } });
+  rowsEl.addEventListener('keydown', ev => { const tr = !ev.target.closest('a') && ev.target.closest('tr.rec'); if(tr && (ev.key === 'Enter' || ev.key === ' ')){ ev.preventDefault(); S.open = S.open === +tr.dataset.id ? null : +tr.dataset.id; render(); document.querySelector(`tr.rec[data-id="${tr.dataset.id}"]`)?.focus() } });
   rowsEl.addEventListener('change', ev => { const rid = ev.target.dataset.xp; if(rid){ const v = +ev.target.value; if(v > 0) S.xpOwn[rid] = v; else delete S.xpOwn[rid]; store.set('xpOwn', S.xpOwn); xpOwnCount(); render(); return } });
   rowsEl.addEventListener('change', ev => { const k = ev.target.dataset.owned; if(k){ const v = Math.max(0, Math.round(+ev.target.value) || 0); if(v) S.owned[k] = v; else delete S.owned[k]; store.set('owned', S.owned); render() } });
   rowsEl.addEventListener('change', ev => { const k = ev.target.dataset.manual; if(k){ const v = +ev.target.value; if(v > 0) S.manual[k] = v; else delete S.manual[k]; store.set('manual', S.manual); manualCount(); render() } });
