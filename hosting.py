@@ -184,8 +184,8 @@ def item_pages(data):
                 f'    <h1 class="card-title"><span><span class="g-{e(grade)}">{e(nm)}</span>: crafting cost</span></h1>\n'
                 f'    {ICONS}\n'   # after the title: a card's first-child title sits flush at the top
                 f'    <p class="lede">AION 2 cost to craft one at market prices, failed attempts included.{only}</p>\n'
-                '    <!--typical-->\n'   # hosting.py figures: the typical cost, once a day
                 '    <div class="itemcost" id="itemCost" hidden></div>\n'
+                '    <!--typical-->\n'   # hosting.py figures: the typical cost, once a day
                 f'    <h2 class="rcp-title">Recipe{"s" if len(blocks) > 1 else ""} <span class="muted">materials per attempt</span></h2>\n'
                 + ''.join(blocks)
                 + (f'    <ul class="facts">{"".join(facts)}</ul>\n' if facts else '')
