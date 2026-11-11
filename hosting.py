@@ -4,6 +4,7 @@
   python hosting.py prices   # current asks for the servers in site/servers.txt -> dist/prices/ (hourly; or give ids)
   python hosting.py speeds   # sale speeds for today's seventh of the servers -> site/speeds/ (daily; committed)
   python hosting.py due      # exit 0 if the live prices predate this hour's capture (the fallback run is needed)
+  python hosting.py figures  # after prices: each item page's typical cost (node figures.js; recomputed once a day)
   python hosting.py changed  # before deploying: list the pages that differ from the live site -> changed.txt
   python hosting.py indexnow # after deploying: tell Bing, Yandex and the other IndexNow engines about changed.txt
 
@@ -114,7 +115,8 @@ _ICON_PATHS = {
     'box': 'M4 8l8-4 8 4v8l-8 4-8-4zM4 8l8 4 8-4M12 12v8',
     'pencil': 'M4 20l1-4.5L15.5 5 19 8.5 8.5 19zM13.5 7l3.5 3.5',
     'down': 'M12 4v15M6 13l6 6 6-6',
-    'book': 'M4 5.5C6.5 4 9.5 4 12 6c2.5-2 5.5-2 8-.5V19c-2.5-1.5-5.5-1.5-8 .5-2.5-2-5.5-2-8-.5zM12 6v13.5',
+    'chart': 'M5 20v-8M12 20V5M19 20v-5M3 20h18',
+    'book':'M4 5.5C6.5 4 9.5 4 12 6c2.5-2 5.5-2 8-.5V19c-2.5-1.5-5.5-1.5-8 .5-2.5-2-5.5-2-8-.5zM12 6v13.5',
 }
 ICONS = ('<svg width="0" height="0" style="position:absolute" aria-hidden="true">'
          + ''.join(f'<symbol id="i-{k}" viewBox="0 0 24 24"><path d="{d}"/></symbol>' for k, d in _ICON_PATHS.items()) + '</svg>')
@@ -182,6 +184,7 @@ def item_pages(data):
                 f'    <h1 class="card-title"><span><span class="g-{e(grade)}">{e(nm)}</span>: crafting cost</span></h1>\n'
                 f'    {ICONS}\n'   # after the title: a card's first-child title sits flush at the top
                 f'    <p class="lede">AION 2 cost to craft one at market prices, failed attempts included.{only}</p>\n'
+                '    <!--typical-->\n'   # hosting.py figures: the typical cost, once a day
                 '    <div class="itemcost" id="itemCost" hidden></div>\n'
                 f'    <h2 class="rcp-title">Recipe{"s" if len(blocks) > 1 else ""} <span class="muted">materials per attempt</span></h2>\n'
                 + ''.join(blocks)
@@ -399,6 +402,64 @@ def published(path):
     return urllib.request.urlopen(urllib.request.Request(f'{SITE_URL}/{path}', headers=UA), timeout=30).read()
 
 
+def kina(v):
+    """As the calculator writes amounts (app/index.html's kina): 21.5M, 352k, 9,850."""
+    a = abs(v)
+    if a >= 1e9:
+        return f'{v / 1e9:.2f}B'
+    if a >= 1e6:
+        return f'{v / 1e6:.{0 if a >= 1e8 else 1 if a >= 1e7 else 2}f}M'
+    if a >= 1e4:
+        return f'{v / 1e3:.{0 if a >= 1e5 else 1}f}k'
+    return f'{round(v):,}'
+
+
+def figures():
+    """Each item page's typical cost: at proficiency 100, the median over the servers that price it (figures.js runs
+    the calculator's own maths). Worked out once a day (UTC) and kept on the site as figures.json, so the pages change
+    daily, not hourly; written into the item pages' card and description. Never fails the deploy."""
+    import subprocess, hashlib
+    day = datetime.now(timezone.utc).date().isoformat()
+    try:
+        f = json.loads(published('figures.json'))
+    except Exception:
+        f = None
+    if not f or f.get('day') != day:
+        try:
+            run = subprocess.run(['node', str(ROOT / 'figures.js'), str(DIST)], capture_output=True, text=True, timeout=900)
+            new = json.loads(run.stdout) if run.returncode == 0 else None
+            if not new:
+                print('figures.js failed:', run.stderr[-2000:])
+            elif f and len(new['items']) < SANE_SHARE * len(f.get('items', {})):   # prices half missing: try again next hour
+                print(f'figures: only {len(new["items"])} items priced; keeping the last ones')
+            else:
+                f = dict(new, day=day)
+        except Exception as e:
+            print(f'figures: {e}; keeping the last ones')
+    if not f:
+        return
+    (DIST / 'figures.json').write_text(json.dumps(f, separators=(',', ':')), encoding='utf8')
+    e = lambda s: html.escape(s, quote=True)
+    d = datetime.fromisoformat(f['day']); when = f'{d:%b} {d.day}'
+    fp = json.loads((DIST / 'pages.json').read_text(encoding='utf8'))
+    items = item_pages(json.load(open(APP / 'data.json', encoding='utf8')))
+    for slug, p in items.items():
+        c = f['items'].get(slug)
+        doc = (DIST / p['file']).read_text(encoding='utf8')
+        if not c:   # some material has no price anywhere: no figure
+            (DIST / p['file']).write_text(doc.replace('    <!--typical-->\n', ''), encoding='utf8')
+            fp[p['path']] = hashlib.sha1((DIST / p['file']).read_bytes()).hexdigest()[:16]
+            continue
+        g = f' · guaranteed <b>≈ {kina(c["g"])}</b>' if c.get('g') else ''
+        doc = doc.replace('<!--typical-->', f'<p class="typical">{icon("chart")}<span>Typical: <b>≈ {kina(c["cost"])}</b> Kina at proficiency {f["mastery"]}{g}'
+                          f'<span class="muted"> · median of {c["n"]} server{"s" if c["n"] != 1 else ""}, {when}</span></span></p>', 1)
+        doc = doc.replace(f'content="{e(p["description"])}"', f'content="{e(p["description"])} Typical cost: about {kina(c["cost"])} Kina."')
+        (DIST / p['file']).write_text(doc, encoding='utf8')
+        fp[p['path']] = hashlib.sha1((DIST / p['file']).read_bytes()).hexdigest()[:16]   # as build() does
+    (DIST / 'pages.json').write_text(json.dumps(fp, separators=(',', ':')), encoding='utf8')
+    print(f'figures of {f["day"]}: {len(f["items"])} items, {f["servers"]} servers')
+
+
 def prices():
     keys = set(json.load(open(APP / 'data.json', encoding='utf8'))['items'])
     out = DIST / 'prices'
@@ -476,4 +537,4 @@ def speeds():
 
 if __name__ == '__main__':
     cmd = sys.argv[1] if len(sys.argv) > 1 else ''
-    {'build': build, 'prices': prices, 'speeds': speeds, 'due': due, 'changed': changed, 'indexnow': indexnow}.get(cmd, lambda: sys.exit(__doc__))()
+    {'build': build, 'prices': prices, 'speeds': speeds, 'due': due, 'figures': figures, 'changed': changed, 'indexnow': indexnow}.get(cmd, lambda: sys.exit(__doc__))()

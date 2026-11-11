@@ -27,6 +27,7 @@ jobs:
           python-version: '3.12'
       - run: python hosting.py build
       - run: python hosting.py prices
+      - run: python hosting.py figures  # the item pages' typical cost, recomputed once a day (needs Node, which the runner has)
       - run: python hosting.py changed  # pages that differ from the live site, for IndexNow after the deploy
       - uses: cloudflare/wrangler-action@v3
         with:
