@@ -6,7 +6,7 @@ import { EmailMessage } from 'cloudflare:email';
 const FROM = 'feedback@daevaforge.com';       // Email Routing must be on for daevaforge.com
 const SHOWN_TO = 'mawreez@daevaforge.com';     // the To header Gmail sees, so it replies from this address
 const KINDS = ['Bug', 'Idea', 'Other'];
-const REPO = 'maurits-cmyk/daeva-forge';
+const REPO = 'mvanacker/daeva-forge';
 
 // The inbox is the Worker secret FEEDBACK_TO (kept out of this public repo); it must be a verified
 // Email Routing destination address, the only kind the send_email binding can deliver to.
