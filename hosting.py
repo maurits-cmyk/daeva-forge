@@ -5,6 +5,7 @@
   python hosting.py speeds   # sale speeds for today's seventh of the servers -> site/speeds/ (daily; committed)
   python hosting.py due      # exit 0 if the live prices predate this hour's capture (the fallback run is needed)
   python hosting.py figures  # after prices: each item page's typical cost (node figures.js; recomputed once a day)
+  python hosting.py popular  # the home page's "Popular" links from the last days' item counts (read once a day)
   python hosting.py changed  # before deploying: list the pages that differ from the live site -> changed.txt
   python hosting.py indexnow # after deploying: tell Bing, Yandex and the other IndexNow engines about changed.txt
 
@@ -69,6 +70,8 @@ def page(p, card=''):
     # the body starts with the artifact's <title> and icon links; the hosted page puts its own in <head>
     start = body.index('<link rel="apple-touch-icon"'); start = body.index('>', start) + 1
     body = body[start:].replace('<small id="tagline">AION 2 crafting calculator</small>', f'<small id="tagline">{e(p["tagline"])}</small>')
+    if p['path'] != '/':   # the "Popular" links are the home page's (hosting.py popular)
+        body = body.replace('  <!--popular-->\n', '')
     if card:
         h = body.index('<h1>'); body = body[:h] + '<p class="h1">' + body[h + 4:].replace('</h1>', '</p>', 1)
         anchor = '<section class="settings foldcard" aria-label="General settings">'
@@ -460,6 +463,55 @@ def figures():
     print(f'figures of {f["day"]}: {len(f["items"])} items, {f["servers"]} servers')
 
 
+POPULAR_DAYS, POPULAR_SHOWN = 3, 8   # the home page's "Popular": the most-opened items of the last 3 days
+
+
+def popular():
+    """The home page's "Popular" links: the items opened most over the last POPULAR_DAYS days (worker.js counts them
+    in Workers Analytics Engine). Read once a day (UTC) through Cloudflare's SQL API with the CF_ANALYTICS_TOKEN and
+    CF_ACCOUNT_ID environment variables, kept on the site as popular.json, written into the home page. Never fails
+    the deploy; without a token or data, the home page has no Popular row."""
+    import os, urllib.request, hashlib
+    day = datetime.now(timezone.utc).date().isoformat()
+    try:
+        pp = json.loads(published('popular.json'))
+    except Exception:
+        pp = None
+    if not pp or pp.get('day') != day:
+        tok, acct = os.environ.get('CF_ANALYTICS_TOKEN'), os.environ.get('CF_ACCOUNT_ID')
+        if not (tok and acct):
+            print('popular: CF_ANALYTICS_TOKEN or CF_ACCOUNT_ID not set; keeping the last counts')
+        else:
+            sql = ('SELECT blob1 AS slug, SUM(_sample_interval) AS n FROM daeva_hits '
+                   f"WHERE timestamp > NOW() - INTERVAL '{POPULAR_DAYS}' DAY GROUP BY slug ORDER BY n DESC LIMIT 100 FORMAT JSON")
+            try:
+                req = urllib.request.Request(f'https://api.cloudflare.com/client/v4/accounts/{acct}/analytics_engine/sql',
+                                             data=sql.encode(), headers={'Authorization': f'Bearer {tok}', **UA})
+                rows = json.loads(urllib.request.urlopen(req, timeout=30).read())['data']
+                pp = {'day': day, 'days': POPULAR_DAYS, 'items': [[r['slug'], round(float(r['n']))] for r in rows]}
+            except Exception as ex:
+                print(f'popular: {ex}; keeping the last counts')
+    if not pp:
+        return
+    (DIST / 'popular.json').write_text(json.dumps(pp, separators=(',', ':')), encoding='utf8')
+    data = json.load(open(APP / 'data.json', encoding='utf8'))
+    items = item_pages(data)
+    top = [(s, items[s]) for s, n in pp['items'] if s in items][:POPULAR_SHOWN]
+    if len(top) < 3:   # too few counts yet to call anything popular
+        return
+    e = lambda s: html.escape(s, quote=True)
+    trend = ('<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" '
+             'stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8M14 7h7v7"/></svg>')
+    row = (f'<nav class="popular" aria-label="Popular items"><span class="lbl">{trend}Popular</span>'
+           + ''.join(f'<a class="g-{e(p["grade"])}" href="{p["path"]}">{e(p["name"])}</a>' for _, p in top) + '</nav>')
+    home = DIST / PAGES['single']['file']
+    home.write_text(home.read_text(encoding='utf8').replace('<!--popular-->', row, 1), encoding='utf8')
+    fp = json.loads((DIST / 'pages.json').read_text(encoding='utf8'))
+    fp['/'] = hashlib.sha1(home.read_bytes()).hexdigest()[:16]
+    (DIST / 'pages.json').write_text(json.dumps(fp, separators=(',', ':')), encoding='utf8')
+    print(f'popular of {pp["day"]}: {", ".join(s for s, _ in top)}')
+
+
 def prices():
     keys = set(json.load(open(APP / 'data.json', encoding='utf8'))['items'])
     out = DIST / 'prices'
@@ -537,4 +589,4 @@ def speeds():
 
 if __name__ == '__main__':
     cmd = sys.argv[1] if len(sys.argv) > 1 else ''
-    {'build': build, 'prices': prices, 'speeds': speeds, 'due': due, 'figures': figures, 'changed': changed, 'indexnow': indexnow}.get(cmd, lambda: sys.exit(__doc__))()
+    {'build': build, 'prices': prices, 'speeds': speeds, 'due': due, 'figures': figures, 'popular': popular, 'changed': changed, 'indexnow': indexnow}.get(cmd, lambda: sys.exit(__doc__))()

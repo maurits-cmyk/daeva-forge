@@ -28,6 +28,10 @@ jobs:
       - run: python hosting.py build
       - run: python hosting.py prices
       - run: python hosting.py figures  # the item pages' typical cost, recomputed once a day (needs Node, which the runner has)
+      - run: python hosting.py popular  # the home page's Popular links, from the Worker's item counts (once a day)
+        env:
+          CF_ANALYTICS_TOKEN: ${{ secrets.CLOUDFLARE_ANALYTICS_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       - run: python hosting.py changed  # pages that differ from the live site, for IndexNow after the deploy
       - uses: cloudflare/wrangler-action@v3
         with:

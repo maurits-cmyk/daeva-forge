@@ -12,8 +12,12 @@ const REPO = 'mvanacker/daeva-forge';
 // Email Routing destination address, the only kind the send_email binding can deliver to.
 export default {
   async fetch(req, env) {
-    if (new URL(req.url).pathname === '/api/feedback') {
+    const path = new URL(req.url).pathname;
+    if (path === '/api/feedback') {
       return req.method === 'POST' ? feedback(req, env) : json({error: 'Use POST.'}, 405);
+    }
+    if (path === '/api/hit') {
+      return req.method === 'POST' ? hit(req, env) : json({error: 'Use POST.'}, 405);
     }
     return env.ASSETS.fetch(req);
   },
@@ -53,6 +57,20 @@ async function feedback(req, env) {
     return json({error: 'Sending failed. Please try again later.'}, 502);
   }
   return json({ok: true});
+}
+
+// Item popularity: the page posts an item's name (its page slug) when a recipe is opened or an item page loads.
+// Stored in Workers Analytics Engine as a count, with nothing about the visitor; one per visitor and item per hour
+// (per Cloudflare location), so reloads and repeat clicks don't inflate it.
+async function hit(req, env) {
+  const slug = (await req.text()).trim().slice(0, 100), mode = new URL(req.url).searchParams.get('mode') === 'profit' ? 'profit' : 'single';
+  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug) || !env.HITS) return new Response(null, {status: 204});
+  const ip = req.headers.get('cf-connecting-ip') || 'unknown';
+  const key = new Request(`https://hit-once.invalid/${encodeURIComponent(ip)}/${slug}`);
+  if (await caches.default.match(key)) return new Response(null, {status: 204});
+  await caches.default.put(key, new Response('1', {headers: {'Cache-Control': 'max-age=3600'}}));
+  env.HITS.writeDataPoint({blobs: [slug, mode], doubles: [1], indexes: [slug]});
+  return new Response(null, {status: 204});
 }
 
 // The prices' age is Aion2Market's newest capture among all servers (prices/index.json, written by hosting.py).

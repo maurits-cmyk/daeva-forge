@@ -25,6 +25,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.path = path + '.html' + self.path[len(path):]
         return super().send_head()
 
+    def do_POST(self):  # /api/hit and /api/feedback live in the Worker; answer like it does, without storing anything
+        self.send_response(204 if self.path.startswith('/api/hit') else 503)
+        self.send_header('Content-Length', '0')
+        self.end_headers()
+
     def end_headers(self):
         for k, v in site_headers():
             self.send_header(k, v)
