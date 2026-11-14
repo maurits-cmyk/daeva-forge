@@ -1411,6 +1411,7 @@ function syncMode(){
   $('#focusProfit').hidden = S.mode !== 'profit';  // Profit card only when crafting in bulk to sell
   if(MODE_PAGE[S.mode]){ $('#tagline').textContent = MODE_PAGE[S.mode].tagline; if(!PAGE_ITEM) document.title = MODE_PAGE[S.mode].title }
   if($('#itemCard')) $('#itemCard').hidden = S.mode !== 'single';
+  if($('.popular')) $('.popular').hidden = S.mode !== 'single';  // popular items are for crafting particular items
   $('#focusExp').hidden = S.mode !== 'exp';
   $('#prof').hidden = S.mode === 'exp';
   document.querySelectorAll('#xpStrategy button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === S.xpStrategy));
@@ -1649,7 +1650,19 @@ function serverPicker(){
   $('#server').addEventListener('change', ev => pickServer(+ev.target.value));
 }
 // the picker shows the server whose prices are in use (it's drawn before they load, and a failed load keeps the old ones)
-function showServer(){ const sel = $('#server'); if(sel && S.server) sel.value = S.server.id }
+function showServer(){ const sel = $('#server'); if(sel && S.server) sel.value = S.server.id; popularFaction() }
+// The "Popular" links (hosting.py popular) name one faction's version of an item, with the other in data-twin:
+// show the version of your server's faction, so a click keeps your server
+function popularFaction(){
+  if(!S.server) return;
+  const want = race();
+  document.querySelectorAll('.popular a[data-twin]').forEach(a => {
+    if(a.dataset.f === want) return;
+    const [href, name, cls] = a.dataset.twin.split('|');
+    a.dataset.twin = [a.getAttribute('href'), a.textContent, a.className].join('|');
+    a.setAttribute('href', href); a.textContent = name; a.className = cls; a.dataset.f = want;
+  });
+}
 // Each faction has its own version of most gear (Star vs True Dragon Lord, say), as a recipe 10,000,000 ids apart.
 // Switching faction takes the open recipe (and an item page) along to the other version.
 const facOf = sid => (S.data.servers.find(s => s[0] === sid) || [])[3];
@@ -1749,6 +1762,11 @@ async function boot(){
     const raceOf = sid => facOf(sid) === 'Elyos' ? 'Light' : 'Dark';
     const races = new Set(LINK.item ? S.data.recipes.filter(r => slugOf(item(r.p)[0]) === LINK.item).map(r => r.race) : []);
     if(races.size && !races.has(raceOf(id))){
+      // someone who picked a server goes to the item's version for their faction instead (keeping their server)
+      const mine = S.data.recipes.filter(r => slugOf(item(r.p)[0]) === LINK.item), t = mine.length && twinOf(mine.find(r => !r.g) || mine[0]);
+      if(PAGE_ITEM && S.hosted && store.get('serverPicked', false) && t && slugOf(item(t.p)[0]) !== PAGE_ITEM){
+        location.replace(`/item/${slugOf(item(t.p)[0])}${LINK.g ? '?guaranteed=1' : ''}`); return;
+      }
       const twin = id + (facOf(id) === 'Elyos' ? 1000 : -1000), other = S.data.servers.map(s => s[0]).filter(sid => known(sid) && races.has(raceOf(sid)));
       if(other.length){ id = known(twin) ? twin : other[0]; remember = false }
     }

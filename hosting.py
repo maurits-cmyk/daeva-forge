@@ -70,8 +70,6 @@ def page(p, card=''):
     # the body starts with the artifact's <title> and icon links; the hosted page puts its own in <head>
     start = body.index('<link rel="apple-touch-icon"'); start = body.index('>', start) + 1
     body = body[start:].replace('<small id="tagline">AION 2 crafting calculator</small>', f'<small id="tagline">{e(p["tagline"])}</small>')
-    if p['path'] != '/':   # the "Popular" links are the home page's (hosting.py popular)
-        body = body.replace('  <!--popular-->\n', '')
     if card:
         h = body.index('<h1>'); body = body[:h] + '<p class="h1">' + body[h + 4:].replace('</h1>', '</p>', 1)
         anchor = '<section class="settings foldcard" aria-label="General settings">'
@@ -496,20 +494,45 @@ def popular():
     (DIST / 'popular.json').write_text(json.dumps(pp, separators=(',', ':')), encoding='utf8')
     data = json.load(open(APP / 'data.json', encoding='utf8'))
     items = item_pages(data)
-    top = [(s, items[s]) for s, n in pp['items'] if s in items][:POPULAR_SHOWN]
+    # an item's two faction versions (Star / True Dragon Lord ..., recipes 10,000,000 ids apart) count as one
+    name = lambda k: data['items'].get(str(k), [str(k)])[0]
+    by_id = {r['id']: r for r in data['recipes']}
+    twin = {}
+    for r in data['recipes']:
+        o = by_id.get(r['id'] + (10**7 if r['race'] == 'Light' else -10**7))
+        if o and o['race'] != r['race'] and slug_of(name(r['p'])) != slug_of(name(o['p'])):
+            twin[slug_of(name(r['p']))] = slug_of(name(o['p']))
+    total, each = {}, {}
+    for s, n in pp['items']:
+        if s not in items:
+            continue
+        key = min(s, twin[s]) if twin.get(s) in items else s
+        total[key] = total.get(key, 0) + n
+        each[s] = each.get(s, 0) + n
+    # shown: the version counted more (the page switches it to the visitor's faction), most opened first
+    top = sorted(total, key=lambda k: -total[k])[:POPULAR_SHOWN]
     if len(top) < 3:   # too few counts yet to call anything popular
         return
     e = lambda s: html.escape(s, quote=True)
+    def link(key):
+        a = max([s for s in (key, twin.get(key)) if s in items], key=lambda s: each.get(s, 0))
+        p = items[a]
+        b = twin.get(a)
+        extra = (f' data-f="{next(iter(p["races"]))}" data-twin="{items[b]["path"]}|{e(items[b]["name"])}|g-{e(items[b]["grade"])}"'
+                 if b in items and len(p['races']) == 1 else '')
+        return f'<a class="g-{e(p["grade"])}" href="{p["path"]}"{extra}>{e(p["name"])}</a>'
     trend = ('<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" '
              'stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8M14 7h7v7"/></svg>')
     row = (f'<nav class="popular" aria-label="Popular items"><span class="lbl">{trend}Popular</span>'
-           + ''.join(f'<a class="g-{e(p["grade"])}" href="{p["path"]}">{e(p["name"])}</a>' for _, p in top) + '</nav>')
-    home = DIST / PAGES['single']['file']
-    home.write_text(home.read_text(encoding='utf8').replace('<!--popular-->', row, 1), encoding='utf8')
+           + ''.join(link(k) for k in top) + '</nav>')
+    # on every calculator page (the app shows it in "specific items" mode), so it's there wherever you land
     fp = json.loads((DIST / 'pages.json').read_text(encoding='utf8'))
-    fp['/'] = hashlib.sha1(home.read_bytes()).hexdigest()[:16]
+    for p in [*PAGES.values(), *items.values()]:
+        f = DIST / p['file']
+        f.write_text(f.read_text(encoding='utf8').replace('<!--popular-->', row, 1), encoding='utf8')
+        fp[p['path']] = hashlib.sha1(f.read_bytes()).hexdigest()[:16]
     (DIST / 'pages.json').write_text(json.dumps(fp, separators=(',', ':')), encoding='utf8')
-    print(f'popular of {pp["day"]}: {", ".join(s for s, _ in top)}')
+    print(f'popular of {pp["day"]}: {", ".join(top)}')
 
 
 def prices():
